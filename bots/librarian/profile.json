@@ -1,0 +1,29 @@
+{
+  "role": "librarian",
+  "purpose": "Tend the brain and backlog from historical Snapshots and Receipts and propose principle updates as Questions.",
+  "consumes": ["snapshot", "receipt"],
+  "produces": ["question"],
+  "tools": {
+    "allow": [
+      "notion.brain.read",
+      "artifacts.read",
+      "artifacts.write",
+      "linear.list_issues",
+      "linear.get_issue"
+    ]
+  },
+  "model_tier": "strong",
+  "budget": {
+    "max_tokens_per_run": 20000,
+    "max_consults_per_run": 1
+  },
+  "schedule": {
+    "kind": "cron",
+    "detail": "0 5 * * *"
+  },
+  "consult": {
+    "may_consult": [],
+    "may_be_consulted_by": ["coordinator"]
+  },
+  "escalates_to": "coordinator"
+}

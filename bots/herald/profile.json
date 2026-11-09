@@ -1,0 +1,26 @@
+{
+  "role": "herald",
+  "purpose": "Batch Receipts and related inputs into Reports and deliver genuinely urgent items via messaging.",
+  "consumes": ["receipt", "report"],
+  "produces": ["report"],
+  "tools": {
+    "allow": [
+      "artifacts.read",
+      "whatsapp.send"
+    ]
+  },
+  "model_tier": "cheap",
+  "budget": {
+    "max_tokens_per_run": 6000,
+    "max_consults_per_run": 0
+  },
+  "schedule": {
+    "kind": "cron",
+    "detail": "0 7,19 * * *"
+  },
+  "consult": {
+    "may_consult": [],
+    "may_be_consulted_by": ["coordinator"]
+  },
+  "escalates_to": "coordinator"
+}

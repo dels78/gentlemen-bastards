@@ -1,0 +1,31 @@
+{
+  "role": "writer",
+  "purpose": "Apply Plan items to external systems, verify each write by read-back, and emit Receipt artifacts.",
+  "consumes": ["plan"],
+  "produces": ["receipt"],
+  "tools": {
+    "allow": [
+      "artifacts.read",
+      "artifacts.write",
+      "gmail.apply",
+      "gmail.read_email",
+      "linear.issue.create",
+      "linear.issue.update",
+      "linear.get_issue"
+    ]
+  },
+  "model_tier": "cheap",
+  "budget": {
+    "max_tokens_per_run": 12000,
+    "max_consults_per_run": 3
+  },
+  "schedule": {
+    "kind": "event",
+    "detail": "artifact:plan"
+  },
+  "consult": {
+    "may_consult": ["planner"],
+    "may_be_consulted_by": ["coordinator"]
+  },
+  "escalates_to": "coordinator"
+}

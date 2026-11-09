@@ -1,0 +1,33 @@
+{
+  "role": "scout",
+  "purpose": "Sense read-only state from Gmail, Linear, and Calendar and emit a typed Snapshot artifact.",
+  "consumes": [],
+  "produces": ["snapshot"],
+  "tools": {
+    "allow": [
+      "gmail.search_emails",
+      "gmail.read_email",
+      "gmail.get_thread",
+      "linear.list_issues",
+      "linear.get_issue",
+      "calendar.list_events",
+      "calendar.get_event",
+      "artifacts.read",
+      "artifacts.write"
+    ]
+  },
+  "model_tier": "cheap",
+  "budget": {
+    "max_tokens_per_run": 8000,
+    "max_consults_per_run": 0
+  },
+  "schedule": {
+    "kind": "interval",
+    "detail": "30m"
+  },
+  "consult": {
+    "may_consult": [],
+    "may_be_consulted_by": ["planner", "coordinator"]
+  },
+  "escalates_to": "coordinator"
+}

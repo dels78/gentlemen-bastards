@@ -1,0 +1,29 @@
+{
+  "role": "coordinator",
+  "purpose": "Orchestrate schedules, retries, and escalations and emit health Reports without relaying routine artifact traffic.",
+  "consumes": ["question"],
+  "produces": ["report"],
+  "tools": {
+    "allow": [
+      "artifacts.read",
+      "artifacts.write",
+      "schedule.nudge",
+      "schedule.retry",
+      "schedule.inspect"
+    ]
+  },
+  "model_tier": "cheap",
+  "budget": {
+    "max_tokens_per_run": 10000,
+    "max_consults_per_run": 5
+  },
+  "schedule": {
+    "kind": "interval",
+    "detail": "5m"
+  },
+  "consult": {
+    "may_consult": ["scout", "planner", "writer", "herald", "librarian"],
+    "may_be_consulted_by": []
+  },
+  "escalates_to": "muse"
+}
