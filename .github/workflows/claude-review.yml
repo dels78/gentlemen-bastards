@@ -16,7 +16,7 @@ concurrency:
 jobs:
   review:
     if: startsWith(github.head_ref, 'cursor/') && vars.CLAUDE_REVIEW_ENABLED == 'true'
-    runs-on: [self-hosted, claude-review]
+    runs-on: arc-gentlemen-bastards
     timeout-minutes: 20
     steps:
       - name: Checkout
