@@ -35,6 +35,15 @@ if [[ -f "$WORKFLOW" ]]; then
 
   grep -q '^permissions:' <<<"$content" && ok_perm=1 || ok_perm=0
   assert "workflow declares permissions: block" "$ok_perm"
+
+  grep -q 'self-hosted' <<<"$content" && ok_sh=1 || ok_sh=0
+  assert "workflow runs-on includes self-hosted" "$ok_sh"
+
+  grep -q 'ubuntu-latest' <<<"$content" && ok_no_ubuntu=0 || ok_no_ubuntu=1
+  assert "workflow does NOT contain ubuntu-latest" "$ok_no_ubuntu"
+
+  grep -q 'vars\.CLAUDE_REVIEW_ENABLED' <<<"$content" && ok_enabled_var=1 || ok_enabled_var=0
+  assert "workflow references vars.CLAUDE_REVIEW_ENABLED" "$ok_enabled_var"
 fi
 
 [[ -f "$PROMPT" ]] && ok_prompt_file=1 || ok_prompt_file=0
