@@ -41,6 +41,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           github_token: ${{ github.token }}
+          claude_args: "--allowedTools Bash,Read,Write,Glob,Grep"
           prompt: |
             Read `.github/claude/review-prompt.md` in the repository checkout and follow it exactly.
 
@@ -48,4 +49,16 @@ jobs:
             The full diff is at `/tmp/pr.diff` on this runner.
             PR title and body metadata are at `/tmp/pr-meta.txt`.
 
-            Post exactly one PR review comment as specified in the prompt file.
+            Write exactly one review comment to /tmp/review-comment.md as specified in the prompt file. Do not post it yourself.
+
+      - name: Post review comment
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -s /tmp/review-comment.md ]; then BODY_FILE=/tmp/review-comment.md; else printf '## Review verdict: FAIL\n\ncannot review: the reviewer run produced no review output.\n' > /tmp/review-fallback.md; BODY_FILE=/tmp/review-fallback.md; fi
+          python3 -c 'import json,sys; print(json.dumps({"body": open(sys.argv[1]).read()}))' "$BODY_FILE" > /tmp/review-payload.json
+          curl -sS -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --data @/tmp/review-payload.json > /dev/null
+          [ "$BODY_FILE" = "/tmp/review-comment.md" ]
