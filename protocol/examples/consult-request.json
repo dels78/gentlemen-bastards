@@ -1,0 +1,15 @@
+{
+  "id": "a1000001-0006-4000-8000-000000000006",
+  "type": "consult-request",
+  "version": 1,
+  "created_at": "2026-11-08T14:10:00Z",
+  "producer": "writer",
+  "refs": {
+    "artifact_id": "a1000001-0002-4000-8000-000000000002",
+    "item_ref": "gmail:19abc789ghi012"
+  },
+  "payload": {
+    "question": "Plan item 3 labels the Tailscale thread — confirm Follow-up/PR-review is still the right label per brain?",
+    "responder": "planner"
+  }
+}
