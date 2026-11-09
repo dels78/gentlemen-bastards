@@ -26,13 +26,14 @@ jobs:
 
       - name: Prepare PR diff and metadata
         env:
-          GH_TOKEN: ${{ github.token }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
         run: |
-          gh pr diff "${{ github.event.pull_request.number }}" > /tmp/pr.diff
+          git diff "${{ github.event.pull_request.base.sha }}...${{ github.event.pull_request.head.sha }}" > /tmp/pr.diff
           {
-            echo "title: ${{ github.event.pull_request.title }}"
+            printf 'title: %s\n' "$PR_TITLE"
             echo "---"
-            echo "${{ github.event.pull_request.body }}"
+            printf '%s\n' "$PR_BODY"
           } > /tmp/pr-meta.txt
 
       - name: Run Claude review
