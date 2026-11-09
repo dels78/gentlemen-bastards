@@ -1,0 +1,9 @@
+{
+  "allow": [
+    "artifacts.read",
+    "artifacts.write",
+    "schedule.nudge",
+    "schedule.retry",
+    "schedule.inspect"
+  ]
+}

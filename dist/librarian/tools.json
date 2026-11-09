@@ -1,0 +1,9 @@
+{
+  "allow": [
+    "notion.brain.read",
+    "artifacts.read",
+    "artifacts.write",
+    "linear.list_issues",
+    "linear.get_issue"
+  ]
+}

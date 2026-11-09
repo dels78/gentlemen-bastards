@@ -1,0 +1,12 @@
+{
+  "consumes": [
+    "question"
+  ],
+  "escalates_to": "muse",
+  "model_tier": "cheap",
+  "produces": [
+    "report"
+  ],
+  "purpose": "Orchestrate schedules, retries, and escalations and emit health Reports without relaying routine artifact traffic.",
+  "role": "coordinator"
+}

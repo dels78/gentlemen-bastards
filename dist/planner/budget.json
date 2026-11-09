@@ -1,0 +1,15 @@
+{
+  "budget": {
+    "max_consults_per_run": 2,
+    "max_tokens_per_run": 24000
+  },
+  "consult": {
+    "may_be_consulted_by": [
+      "writer",
+      "coordinator"
+    ],
+    "may_consult": [
+      "scout"
+    ]
+  }
+}

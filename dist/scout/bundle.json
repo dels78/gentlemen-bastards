@@ -1,0 +1,10 @@
+{
+  "consumes": [],
+  "escalates_to": "coordinator",
+  "model_tier": "cheap",
+  "produces": [
+    "snapshot"
+  ],
+  "purpose": "Sense read-only state from Gmail, Linear, and Calendar and emit a typed Snapshot artifact.",
+  "role": "scout"
+}

@@ -1,0 +1,13 @@
+{
+  "consumes": [
+    "receipt",
+    "report"
+  ],
+  "escalates_to": "coordinator",
+  "model_tier": "cheap",
+  "produces": [
+    "report"
+  ],
+  "purpose": "Batch Receipts and related inputs into Reports and deliver genuinely urgent items via messaging.",
+  "role": "herald"
+}

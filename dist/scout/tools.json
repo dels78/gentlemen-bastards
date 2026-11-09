@@ -1,0 +1,13 @@
+{
+  "allow": [
+    "gmail.search_emails",
+    "gmail.read_email",
+    "gmail.get_thread",
+    "linear.list_issues",
+    "linear.get_issue",
+    "calendar.list_events",
+    "calendar.get_event",
+    "artifacts.read",
+    "artifacts.write"
+  ]
+}
