@@ -22,6 +22,7 @@ TYPE_CONSTANTS = {
     "report": "report",
     "consult-request": "consult-request",
     "consult-response": "consult-response",
+    "brain-proposal": "brain-proposal",
 }
 
 EXAMPLE_TO_TYPE = {
@@ -32,6 +33,11 @@ EXAMPLE_TO_TYPE = {
     "report.json": "report",
     "consult-request.json": "consult-request",
     "consult-response.json": "consult-response",
+    "brain-proposal.json": "brain-proposal",
+}
+
+INVALID_EXAMPLES = {
+    "brain-proposal.invalid.json": "brain-proposal",
 }
 
 
@@ -191,6 +197,37 @@ def check_refs_and_payload(doc: dict[str, Any], artifact_type: str) -> tuple[boo
             return False, "consult-response answer must be string"
         return True, ""
 
+    if artifact_type == "brain-proposal":
+        for req in (
+            "proposer",
+            "target",
+            "change_kind",
+            "rationale",
+            "proposal",
+            "evidence_refs",
+        ):
+            if req not in payload:
+                return False, f"brain-proposal payload missing {req}"
+        if not is_str(payload["proposer"]):
+            return False, "brain-proposal proposer must be string"
+        target = payload["target"]
+        if target is not None and not is_str(target):
+            return False, "brain-proposal target must be string or null"
+        if payload["change_kind"] not in ("create", "amend", "supersede", "archive"):
+            return False, "brain-proposal invalid change_kind"
+        if not is_str(payload["rationale"]) or not payload["rationale"].strip():
+            return False, "brain-proposal rationale must be non-empty string"
+        if not is_obj(payload["proposal"]):
+            return False, "brain-proposal proposal must be object"
+        if not is_arr(payload["evidence_refs"]):
+            return False, "brain-proposal evidence_refs must be array"
+        if not payload["evidence_refs"]:
+            return False, "brain-proposal evidence_refs must be non-empty"
+        for i, ref in enumerate(payload["evidence_refs"]):
+            if not is_str(ref) or not ref.strip():
+                return False, f"brain-proposal evidence_refs[{i}] must be non-empty string"
+        return True, ""
+
     return False, f"unknown artifact type {artifact_type!r}"
 
 
@@ -269,6 +306,27 @@ def main() -> int:
             match,
             "" if match else "ids differ",
         ) and all_pass
+
+    for filename, artifact_type in sorted(INVALID_EXAMPLES.items()):
+        path = EXAMPLE_DIR / filename
+        try:
+            doc = load_json(path)
+            all_pass = ok(f"parse invalid example {filename}", is_obj(doc)) and all_pass
+        except (json.JSONDecodeError, OSError) as e:
+            all_pass = ok(f"parse invalid example {filename}", False, str(e)) and all_pass
+            continue
+
+        env_ok, env_detail = check_envelope(doc, artifact_type)
+        body_ok, body_detail = check_refs_and_payload(doc, artifact_type)
+        should_fail = not (env_ok and body_ok)
+        detail = ""
+        if not should_fail:
+            detail = "expected validation failure but example passed"
+        elif env_ok and not body_ok:
+            detail = body_detail
+        elif not env_ok:
+            detail = env_detail
+        all_pass = ok(f"invalid example {filename} rejected", should_fail, detail) and all_pass
 
     return 0 if all_pass else 1
 

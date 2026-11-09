@@ -23,6 +23,7 @@ KNOWN_ARTIFACT_TYPES = frozenset(
         "report",
         "consult-request",
         "consult-response",
+        "brain-proposal",
     }
 )
 

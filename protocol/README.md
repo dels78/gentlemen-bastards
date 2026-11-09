@@ -15,7 +15,7 @@ level):
 | Field | Meaning |
 |-------|---------|
 | `id` | Unique artifact identifier (string). |
-| `type` | One of: `snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`. |
+| `type` | One of: `snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`. |
 | `version` | Protocol version; currently `1`. |
 | `created_at` | ISO 8601 date-time when the artifact was produced. |
 | `producer` | Bot role that produced the artifact (e.g. `scout`, `planner`, `writer`). |
@@ -35,6 +35,18 @@ Schemas live in `protocol/schemas/` (JSON Schema draft 2020-12).
 - A **Consult-response** references the consult-request it answers via
   `refs.request_id`.
 - **Snapshot** and **Report** have no required refs (empty `refs` is allowed).
+
+## Brain-proposal convention
+
+Brain-proposal is the loop's inbox for suggested brain (Notion) changes:
+
+- **Any role bot may propose** by emitting a `brain-proposal` artifact (`payload.proposer` names the originating bot role; `producer` is whoever wrote the artifact to the store).
+- **Proposer ≠ applier ≠ approver.** Proposals are artifacts only — they do not write the brain. The **Librarian** triages proposals, develops well-formed ones, and re-emits **Questions** for human approval. Only after approval does a human or Muse-directed apply step update Notion (outside this protocol).
+- **`payload.target`** is an existing brain record id, or `null` when proposing a new record.
+- **`payload.change_kind`** is one of `create`, `amend`, `supersede`, or `archive`.
+- **`payload.evidence_refs`** must cite supporting artifact ids or durable source pointers (non-empty).
+
+Librarian-routed **Questions** about an approved proposal path should reference the originating `brain-proposal` via `refs.artifact_id` and a stable `refs.item_ref` (for example the brain record id or proposal id).
 
 ## Consult convention
 

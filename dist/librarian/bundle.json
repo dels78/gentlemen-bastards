@@ -1,13 +1,14 @@
 {
   "consumes": [
     "snapshot",
-    "receipt"
+    "receipt",
+    "brain-proposal"
   ],
   "escalates_to": "coordinator",
   "model_tier": "strong",
   "produces": [
     "question"
   ],
-  "purpose": "Tend the brain and backlog from historical Snapshots and Receipts and propose principle updates as Questions.",
+  "purpose": "Tend the brain and backlog from Snapshots and Receipts, triage brain-proposals, and route developed updates as Questions.",
   "role": "librarian"
 }
