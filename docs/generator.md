@@ -67,7 +67,7 @@ All JSON uses sorted keys and two-space indent. No timestamps or run-dependent f
 
 ## Hermes mapping (honest scope)
 
-This `dist/` format is **this repo's intermediate representation**. It is designed to be consumed by deployment/GitOps and validated against Hermes profile distributions in the **Scout spike** job (PERSO-726 build step 4), not fully mapped here.
+This `dist/` format is **this repo's intermediate representation**. It is designed to be consumed by deployment/GitOps and validated against Hermes profile distributions in the **Scout spike** job (PERSO-727 build step 4), not fully mapped here.
 
 Expected mapping direction (validated later, not implemented in GB-04):
 
