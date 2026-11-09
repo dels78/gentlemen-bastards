@@ -1,0 +1,12 @@
+{
+  "consumes": [
+    "plan"
+  ],
+  "escalates_to": "coordinator",
+  "model_tier": "cheap",
+  "produces": [
+    "receipt"
+  ],
+  "purpose": "Apply Plan items to external systems, verify each write by read-back, and emit Receipt artifacts.",
+  "role": "writer"
+}

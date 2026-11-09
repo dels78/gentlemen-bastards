@@ -1,0 +1,15 @@
+{
+  "allow": [
+    "artifacts.read",
+    "artifacts.write",
+    "gmail.apply",
+    "gmail.read_email",
+    "linear.issue.create",
+    "linear.issue.update",
+    "linear.get_issue"
+  ],
+  "read_back_only": [
+    "gmail.read_email",
+    "linear.get_issue"
+  ]
+}

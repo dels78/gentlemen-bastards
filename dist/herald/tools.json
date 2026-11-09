@@ -1,0 +1,6 @@
+{
+  "allow": [
+    "artifacts.read",
+    "whatsapp.send"
+  ]
+}

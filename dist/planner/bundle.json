@@ -1,0 +1,13 @@
+{
+  "consumes": [
+    "snapshot"
+  ],
+  "escalates_to": "coordinator",
+  "model_tier": "strong",
+  "produces": [
+    "plan",
+    "question"
+  ],
+  "purpose": "Turn Snapshots and brain principles into an ordered Plan and unresolved Questions without touching external systems.",
+  "role": "planner"
+}

@@ -1,0 +1,7 @@
+{
+  "allow": [
+    "artifacts.read",
+    "artifacts.write",
+    "notion.brain.read"
+  ]
+}

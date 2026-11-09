@@ -40,6 +40,8 @@ Exit `0` if identical; exit `1` with a short diff summary if not. Use this in re
 python3 -m unittest discover -s generator
 ```
 
+`generator/test_generate.py` uses a synthetic `BEHAVIOR.md` in a temp dir for isolation. One policy check allows librarian non-artifact tools to use `notion.*` or `linear.*`: the GB-02 profile includes `linear.list_issues` and `linear.get_issue` for backlog tending (see `bots/librarian/INSTRUCTIONS.md`), while cross-cutting “brain via notion” behavior still lives in `contracts/BEHAVIOR.md`.
+
 ## `dist/` layout
 
 ### Per role: `dist/<role>/`

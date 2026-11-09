@@ -1,0 +1,61 @@
+{
+  "coordinator": {
+    "allow": [
+      "artifacts.read",
+      "artifacts.write",
+      "schedule.nudge",
+      "schedule.retry",
+      "schedule.inspect"
+    ]
+  },
+  "herald": {
+    "allow": [
+      "artifacts.read",
+      "whatsapp.send"
+    ]
+  },
+  "librarian": {
+    "allow": [
+      "notion.brain.read",
+      "artifacts.read",
+      "artifacts.write",
+      "linear.list_issues",
+      "linear.get_issue"
+    ]
+  },
+  "planner": {
+    "allow": [
+      "artifacts.read",
+      "artifacts.write",
+      "notion.brain.read"
+    ]
+  },
+  "scout": {
+    "allow": [
+      "gmail.search_emails",
+      "gmail.read_email",
+      "gmail.get_thread",
+      "linear.list_issues",
+      "linear.get_issue",
+      "calendar.list_events",
+      "calendar.get_event",
+      "artifacts.read",
+      "artifacts.write"
+    ]
+  },
+  "writer": {
+    "allow": [
+      "artifacts.read",
+      "artifacts.write",
+      "gmail.apply",
+      "gmail.read_email",
+      "linear.issue.create",
+      "linear.issue.update",
+      "linear.get_issue"
+    ],
+    "read_back_only": [
+      "gmail.read_email",
+      "linear.get_issue"
+    ]
+  }
+}
