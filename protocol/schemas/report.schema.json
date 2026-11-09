@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentlemen-bastards.example/protocol/report.schema.json",
+  "title": "Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "version", "created_at", "producer", "refs", "payload"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string", "const": "report" },
+    "version": { "type": "integer", "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string" },
+    "refs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["period", "highlights"],
+      "properties": {
+        "period": {
+          "type": "object",
+          "required": ["from", "to"],
+          "properties": {
+            "from": { "type": "string", "format": "date-time" },
+            "to": { "type": "string", "format": "date-time" }
+          }
+        },
+        "highlights": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

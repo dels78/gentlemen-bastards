@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentlemen-bastards.example/protocol/question.schema.json",
+  "title": "Question",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "version", "created_at", "producer", "refs", "payload"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string", "const": "question" },
+    "version": { "type": "integer", "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string" },
+    "refs": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["artifact_id", "item_ref"],
+      "properties": {
+        "artifact_id": { "type": "string" },
+        "item_ref": { "type": "string" }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["text", "blocking"],
+      "properties": {
+        "text": { "type": "string" },
+        "blocking": { "type": "boolean" }
+      }
+    }
+  }
+}

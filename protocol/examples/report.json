@@ -1,0 +1,19 @@
+{
+  "id": "a1000001-0005-4000-8000-000000000005",
+  "type": "report",
+  "version": 1,
+  "created_at": "2026-11-08T18:00:00Z",
+  "producer": "herald",
+  "refs": {},
+  "payload": {
+    "period": {
+      "from": "2026-11-08T06:00:00Z",
+      "to": "2026-11-08T18:00:00Z"
+    },
+    "highlights": [
+      "Processed morning snapshot: 2 emails archived or labeled, 1 Linear comment in SHADOW.",
+      "One open Question on PERSO-699 wording (non-blocking).",
+      "AWS billing alert archived; amount noted for weekly review."
+    ]
+  }
+}

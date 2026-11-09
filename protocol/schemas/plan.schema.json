@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentlemen-bastards.example/protocol/plan.schema.json",
+  "title": "Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "version", "created_at", "producer", "refs", "payload"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string", "const": "plan" },
+    "version": { "type": "integer", "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string" },
+    "refs": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["snapshot_id"],
+      "properties": {
+        "snapshot_id": { "type": "string" }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["writes", "questions"],
+      "properties": {
+        "writes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["system", "action", "object_ref", "description"],
+            "properties": {
+              "system": { "type": "string" },
+              "action": { "type": "string" },
+              "object_ref": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "questions": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}

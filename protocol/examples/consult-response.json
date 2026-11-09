@@ -1,0 +1,14 @@
+{
+  "id": "a1000001-0007-4000-8000-000000000007",
+  "type": "consult-response",
+  "version": 1,
+  "created_at": "2026-11-08T14:10:45Z",
+  "producer": "planner",
+  "refs": {
+    "request_id": "a1000001-0006-4000-8000-000000000006"
+  },
+  "payload": {
+    "outcome": "answered",
+    "answer": "Yes — PR-review threads use Follow-up/PR-review until merged or explicitly declined."
+  }
+}

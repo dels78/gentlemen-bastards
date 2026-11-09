@@ -1,0 +1,31 @@
+{
+  "id": "a1000001-0001-4000-8000-000000000001",
+  "type": "snapshot",
+  "version": 1,
+  "created_at": "2026-11-08T14:00:00Z",
+  "producer": "scout",
+  "refs": {},
+  "payload": {
+    "window": {
+      "from": "2026-11-08T06:00:00Z",
+      "to": "2026-11-08T14:00:00Z"
+    },
+    "items": [
+      {
+        "kind": "email",
+        "ref": "gmail:19abc123def456",
+        "summary": "AWS billing alert — estimated charges exceeded $50 threshold for November"
+      },
+      {
+        "kind": "email",
+        "ref": "gmail:19abc789ghi012",
+        "summary": "Re: Tailscale ACL review — teammate asked whether homeops PR is ready to merge"
+      },
+      {
+        "kind": "linear_issue",
+        "ref": "linear:PERSO-699",
+        "summary": "SHADOW vs LIVE mode — make per-bot config explicit before cutover"
+      }
+    ]
+  }
+}

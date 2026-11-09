@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentlemen-bastards.example/protocol/receipt.schema.json",
+  "title": "Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "version", "created_at", "producer", "refs", "payload"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string", "const": "receipt" },
+    "version": { "type": "integer", "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string" },
+    "refs": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["plan_id"],
+      "properties": {
+        "plan_id": { "type": "string" }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["results"],
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["object_ref", "status", "readback"],
+            "properties": {
+              "object_ref": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["applied", "failed", "skipped"]
+              },
+              "readback": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

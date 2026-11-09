@@ -1,7 +1,8 @@
 # Personal Loop Architecture — Proposal
 
-Status: DRAFT for Martin's approval (2026-11-08, rev 10 — runtime decided:
-Hermes Agent; system repo named gentlemen-bastards)
+Status: DRAFT for Martin's approval (2026-11-08, rev 11 — adds the cutover
+discipline, section 14; runtime decided: Hermes Agent; system repo named
+gentlemen-bastards)
 Supersedes: the Cursor Automations driver era (Oct–Nov 2026) and the Grok Bot period.
 Design inputs: Martin's architecture principles, the dotai instruction stack, the
 mbrain design record, the 2026-11-08 repo/cluster/Cursor/Linear inventory.
@@ -348,3 +349,23 @@ property of the system, not a hope.
 6. Pilot the engineering agents on PERSO-723 (Tailscale policy GitOps).
 7. Disable the Cursor automations; write the exit runbook; close or fold the
    ~18 scattered loop issues into the project.
+
+## 14. Cutover discipline
+
+Build the new system fully in parallel: the current Cursor-automation loop
+keeps running untouched until the new system is proven. The invariant is:
+**reads may overlap, writes never do** — at any moment exactly one system
+may write to the user's accounts.
+
+Graduation is staged:
+
+1. **SHADOW** — the new bots read live data, but the gateway blocks every
+   write. Plans are produced and reviewed against the old loop's behavior.
+2. **Supervised LIVE** — once SHADOW Plans match expectations, the Writer is
+   enabled, gated at first; in the same motion the old system's writing
+   automation (ACT) is disabled, preserving the single-writer invariant.
+3. **Full LIVE** — the Writer runs autonomously within its budgets.
+4. **Retirement (build step 7)** — only at full LIVE are the remaining Cursor
+   automations switched off: disabled, not deleted. The old system stays
+   dormant and intact for a rollback window; re-enabling it is a toggle, not a
+   rebuild. Final retirement comes later.
