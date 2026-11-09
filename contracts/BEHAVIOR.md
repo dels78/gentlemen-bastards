@@ -24,7 +24,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -35,6 +35,8 @@ No free-form bot-to-bot chat. No side channels.
 - Every **question** references the **artifact** and **item** it is about.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
+
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
 
 ## 4. Separation of duty
 

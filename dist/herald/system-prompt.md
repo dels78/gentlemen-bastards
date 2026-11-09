@@ -1,4 +1,4 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=cf4a0734596d1e996f30a6bebe3d1b8466b05d4987ee189b3aa1a959d93e6a2f -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68 -->
 <!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=19fb97e3d51c4f564336fef7d413f022378520d8beda16053d5eede4905be692 -->
 # Loop bots — shared behavior contract
 
@@ -26,7 +26,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -37,6 +37,8 @@ No free-form bot-to-bot chat. No side channels.
 - Every **question** references the **artifact** and **item** it is about.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
+
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
 
 ## 4. Separation of duty
 

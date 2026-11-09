@@ -1,0 +1,16 @@
+{
+  "id": "a1000001-0008-4000-8000-000000000099",
+  "type": "brain-proposal",
+  "version": 1,
+  "created_at": "2026-11-08T17:31:00Z",
+  "producer": "scout",
+  "refs": {},
+  "payload": {
+    "proposer": "scout",
+    "target": null,
+    "change_kind": "insert",
+    "rationale": "Missing required fields below.",
+    "proposal": {},
+    "evidence_refs": []
+  }
+}

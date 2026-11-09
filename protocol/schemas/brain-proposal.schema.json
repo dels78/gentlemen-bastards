@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gentlemen-bastards.example/protocol/brain-proposal.schema.json",
+  "title": "BrainProposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "type", "version", "created_at", "producer", "refs", "payload"],
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "type": "string", "const": "brain-proposal" },
+    "version": { "type": "integer", "const": 1 },
+    "created_at": { "type": "string", "format": "date-time" },
+    "producer": { "type": "string" },
+    "refs": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "proposer",
+        "target",
+        "change_kind",
+        "rationale",
+        "proposal",
+        "evidence_refs"
+      ],
+      "properties": {
+        "proposer": { "type": "string" },
+        "target": {
+          "type": ["string", "null"]
+        },
+        "change_kind": {
+          "type": "string",
+          "enum": ["create", "amend", "supersede", "archive"]
+        },
+        "rationale": { "type": "string" },
+        "proposal": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "frontmatter": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "body": { "type": "string" }
+          }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

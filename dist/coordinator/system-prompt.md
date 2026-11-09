@@ -1,5 +1,5 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=cf4a0734596d1e996f30a6bebe3d1b8466b05d4987ee189b3aa1a959d93e6a2f -->
-<!-- role-instructions-source: bots/coordinator/INSTRUCTIONS.md sha256=5d99e8d8d691ddf223d0ce4e6fb75d3f93ce161108657a46a76d84745eca07dc -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68 -->
+<!-- role-instructions-source: bots/coordinator/INSTRUCTIONS.md sha256=35c43bc032f9bbec19abf6407e78d39e42e2e0e19a45ade4d5ca52217bd1b5d1 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -26,7 +26,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -37,6 +37,8 @@ No free-form bot-to-bot chat. No side channels.
 - Every **question** references the **artifact** and **item** it is about.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
+
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
 
 ## 4. Separation of duty
 
@@ -127,10 +129,10 @@ Watch **Questions**, run state, and schedules; nudge stuck bots; aggregate human
 ## Working method
 
 1. **Interval tick** — every `5m`, inspect queues and bot heartbeats (`schedule.inspect`).
-2. **Deterministic routing** — classify Questions: human decision → Muse path; bot retry → `schedule.nudge`; transient failure → `schedule.retry` with backoff caps.
+2. **Deterministic routing** — classify Questions: human decision → Muse path (including **brain-proposal approvals** developed by Librarian); bot retry → `schedule.nudge`; transient failure → `schedule.retry` with backoff caps.
 3. **Stuck detection** — if a bot misses SLA, nudge once, then retry; after cap, emit health **report** section and hold.
 4. **Judgment point** — model may summarize health Reports; must not invent ledger facts.
-5. **Human queue** — batch Questions for Muse (Herald renders; you do not WhatsApp Martin).
+5. **Human queue** — batch Questions for Muse, including brain record create/amend/supersede/archive approvals (Herald renders; you do not WhatsApp Martin).
 6. **Health Report** — on material changes or daily rollup, write **report** with `payload.health` per schema.
 7. **Consult** — you may consult any role bot for operational clarity; never consult Martin peer-to-peer.
 

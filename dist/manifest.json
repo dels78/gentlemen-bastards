@@ -1,6 +1,6 @@
 {
   "behavior": "contracts/BEHAVIOR.md",
-  "behavior_sha256": "cf4a0734596d1e996f30a6bebe3d1b8466b05d4987ee189b3aa1a959d93e6a2f",
+  "behavior_sha256": "59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68",
   "generator": "generator/generate.py",
   "roles": [
     "coordinator",
@@ -11,20 +11,20 @@
     "writer"
   ],
   "sources": {
-    "bots/coordinator/INSTRUCTIONS.md": "5d99e8d8d691ddf223d0ce4e6fb75d3f93ce161108657a46a76d84745eca07dc",
+    "bots/coordinator/INSTRUCTIONS.md": "35c43bc032f9bbec19abf6407e78d39e42e2e0e19a45ade4d5ca52217bd1b5d1",
     "bots/coordinator/profile.json": "f8e3761ef36d8717f31c5e82b6389942873190aa5089d1043a71ded564f441f6",
     "bots/herald/INSTRUCTIONS.md": "19fb97e3d51c4f564336fef7d413f022378520d8beda16053d5eede4905be692",
     "bots/herald/profile.json": "15bf32d25b09e7c4040ffa5cf74ff029d3ca52a3fc91a657562e97f9478c856c",
-    "bots/librarian/INSTRUCTIONS.md": "925e001f0c2257d28fffcc3c647e2bf6f3ada29d9b71f03e32148b1e336c9ec5",
-    "bots/librarian/profile.json": "9c23d17403b0b98bb12dbb954c95b478fca8f3bb0a10d4ec4dcaffca539ac1f1",
+    "bots/librarian/INSTRUCTIONS.md": "1a520b6b3ed779d3ce4db3a199922c6bca17f754d444126de55fdceb93709627",
+    "bots/librarian/profile.json": "7413e24caedbfd4e26ebde748745a1cdcfa6861bf86712db7584fbd4ec2fe30d",
     "bots/planner/INSTRUCTIONS.md": "1e52459e513684c9ef93eb35b3fbc834d6ae0d82d9980936baca50dbe8e80bf6",
     "bots/planner/profile.json": "2b4ec22978dd933516252826a29155e8a2b0c5615c11e67d366651ac423ad3fe",
     "bots/scout/INSTRUCTIONS.md": "ada00004fe35cd70de47ba7a1e4b9db7a7f72502e5d8fd4e618fa16f215e9b58",
     "bots/scout/profile.json": "16ff929a40e1bbfe23903dab08620b947ae5d8a17f5d2296ea0b34066200d8f2",
     "bots/writer/INSTRUCTIONS.md": "4c858254e73f62000237b8111465cdaf93a6a14da43aebdc8f30c606023f71b6",
     "bots/writer/profile.json": "0cce58ec12bcb76c6e80b0c9a7fa53ab25435ed2eddaf5823bc2e8a0c870ccd5",
-    "contracts/BEHAVIOR.md": "cf4a0734596d1e996f30a6bebe3d1b8466b05d4987ee189b3aa1a959d93e6a2f",
+    "contracts/BEHAVIOR.md": "59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68",
     "contracts/README.md": "27df71f81a4b351d50c948a95887224a8fef92312ccc39f1835ff10abc5f2dda",
-    "contracts/ROLES.md": "7481ade1c96a6d0f10b2284ee908e30c1520b8a0dd8c277899e8194108422625"
+    "contracts/ROLES.md": "ff175bae9e975aa1b57260a73611e2270b862d3f96951cd6a2498f6b0a20f20b"
   }
 }
