@@ -11,11 +11,20 @@ When it fires, the workflow:
 3. Invokes `anthropics/claude-code-action@v1` with instructions from `.github/claude/review-prompt.md`.
 4. The reviewer posts **one** comment on the PR starting with `## Review verdict: PASS` or `## Review verdict: FAIL`.
 
+## Where it runs
+
+The review job runs **only** on a **self-hosted** runner labeled `claude-review` in the owner’s cluster. It never runs on GitHub-hosted runners; no GitHub Actions metered minutes are consumed. GitHub remains the trigger and PR surface only.
+
 ## When it runs
 
 The workflow triggers on `pull_request` events: `opened`, `synchronize`, and `reopened`.
 
-It runs only when the pull request’s **head branch** name starts with `cursor/` (job-level filter on `github.head_ref`). Other branches do not run this reviewer.
+It runs only when **both** of the following are true:
+
+- The pull request’s **head branch** name starts with `cursor/` (job-level filter on `github.head_ref`).
+- The repository variable `CLAUDE_REVIEW_ENABLED` is set to `true`.
+
+If either condition fails, the job is **skipped** entirely (no queue, no runner time).
 
 Concurrency is grouped per PR number; a newer run cancels an in-progress review for the same PR.
 
@@ -27,17 +36,15 @@ This Action replaces the previous Muse subagent reviewer for `cursor/*` implemen
 2. **Claude Review** (this workflow) verifies the PR against the spec’s stated acceptance criteria and repo artifacts.
 3. On **PASS**, the **implementing agent** squash-merges (per orchestrator instructions). This workflow does not merge.
 
-## One-time owner setup
+## Enabling the reviewer (owner)
 
-Add a repository Actions secret:
+Until **both** prerequisites below are in place, review jobs are skipped—nothing runs on a runner.
 
-| Name | Value |
-|------|--------|
-| `CLAUDE_CODE_OAUTH_TOKEN` | Subscription OAuth token from `claude setup-token` |
+1. **Secret** — add repository Actions secret `CLAUDE_CODE_OAUTH_TOKEN` (subscription OAuth token from `claude setup-token`). This is the **same credential** already stored in the owner’s 1Password vault for the homeops cluster—not an Anthropic API key.
+2. **Runner** — register a self-hosted runner on the owner’s cluster with labels `self-hosted` and `claude-review` (GitHub’s default `self-hosted` label plus the custom `claude-review` label required by the workflow).
+3. **Variable** — in the repository, set Actions variable `CLAUDE_REVIEW_ENABLED` to `true` (Settings → Secrets and variables → Actions → Variables).
 
-This is the **same credential** already stored in the owner’s 1Password vault for the homeops cluster—not an Anthropic API key.
-
-Until the secret exists, workflow runs that reach the Claude step will **fail at authentication**. That red X is **expected**, not an incident: the workflow is wired correctly but cannot authenticate.
+After all three are configured, eligible `cursor/*` PRs will schedule the review job on the cluster runner.
 
 ## No API key invariant
 
@@ -47,7 +54,8 @@ This setup intentionally uses **only** the Claude subscription OAuth token (`CLA
 
 To turn off automated review without changing application code:
 
-1. In GitHub: **Actions** → **Claude Review** → **⋯** → **Disable workflow**.
+1. Set repository variable `CLAUDE_REVIEW_ENABLED` to `false`, or delete the variable. Review jobs are then skipped.
+2. Or in GitHub: **Actions** → **Claude Review** → **⋯** → **Disable workflow**.
 
 Or set the workflow file’s `on:` to a manual `workflow_dispatch` only in a future change. No other components need to be toggled for a temporary pause.
 
@@ -59,4 +67,4 @@ From the repo root:
 bash scripts/check-claude-review.sh
 ```
 
-This script asserts the workflow file, OAuth secret reference, branch filter, permissions block, and review prompt are present and consistent.
+This script asserts the workflow file, OAuth secret reference, branch filter, permissions block, self-hosted `runs-on`, enable gate variable, and review prompt are present and consistent.
