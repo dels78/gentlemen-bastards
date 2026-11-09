@@ -2,7 +2,7 @@ name: Claude Review
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   review:
-    if: startsWith(github.head_ref, 'cursor/') && vars.CLAUDE_REVIEW_ENABLED == 'true'
+    if: startsWith(github.head_ref, 'cursor/') && vars.CLAUDE_REVIEW_ENABLED == 'true' && github.event.pull_request.draft == false
     runs-on: arc-gentlemen-bastards
     timeout-minutes: 20
     steps:
@@ -36,7 +36,40 @@ jobs:
             printf '%s\n' "$PR_BODY"
           } > /tmp/pr-meta.txt
 
+      - name: Trivial-change gate
+        id: gate
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+        run: |
+          set -euo pipefail
+          files=$(sed -n 's|^diff --git a/.* b/||p' /tmp/pr.diff)
+          lines=$(grep -E '^[+-]' /tmp/pr.diff | grep -vE '^(\+\+\+|---)' | wc -l || true)
+          trivial=false
+          reason=""
+          has_label() { case ",$LABELS," in *",$1,"*) return 0;; *) return 1;; esac; }
+          if has_label skip-review; then
+            trivial=true
+            reason="skip-review label"
+          elif ! has_label force-review; then
+            if [ -n "$files" ] && [ -z "$(printf '%s\n' "$files" | grep -v '\.md$' || true)" ]; then
+              trivial=true
+              reason="docs-only"
+            elif [ "$lines" -le 10 ]; then
+              trivial=true
+              reason="tiny diff"
+            fi
+          fi
+          if [ "$trivial" = "true" ]; then
+            {
+              echo "## Claude review skipped (trivial change)"
+              echo
+              echo "Skipped automatic review: $reason. A maintainer can add the \`force-review\` label and re-run to get a full review."
+            } > /tmp/review-comment.md
+          fi
+          echo "trivial=$trivial" >> "$GITHUB_OUTPUT"
+
       - name: Run Claude review
+        if: steps.gate.outputs.trivial != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
