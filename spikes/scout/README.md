@@ -103,7 +103,13 @@ Record dated notes here during and after the spike. Do **not** silently patch `d
 
 ### Hermes behavior surprises
 
-- _YYYY-MM-DD — _
+- **2026-11-08 (ET)** — Appliance realignment (GB-05h): the hermes-agent image is an s6-overlay appliance, not a CLI container; the spike’s early failures (uid/permission chain, plugin-install idempotency, `gateway` StartError) all traced to that one wrong assumption. Manifests now follow the vendor contract: vendor entrypoint + args `["gateway","run"]`, uid/gid 10000 (vendor-native), bootstrap as Argo PreSync hook Jobs on the derived image, declarative plugin enablement via config.yaml, API server on loopback with the stage2-generated key.
+
+### Build + rollout log
+
+- **2026-11-08–09 (ET)** — Derived-image build chain (GB-05i..05n, five failed runs, each a distinct defect): fabricated GitHub Action pin SHAs (verify every pin resolves before use); the stock image ships dangling `/usr/local/bin/npm`+`npx` symlinks (final stage lacks the node install) so the derived image transplants its own Node 22; the claude-code npm package’s bin is a non-executable stub until its postinstall runs; root cause of the last two failures: inside the hermes image, `npm config get prefix` resolves to the vendor’s node tree (`/opt/hermes/tools/node-26.12.1-linux-x64`), so `npm install -g` silently installed claude-code there instead of `/usr/local`. Fix: `npm install -g --prefix /usr/local` + explicit postinstall run, gated by an in-Dockerfile `claude --version` assertion. Build green from run 42561798551 (2026-11-09): `ghcr.io/dels78/hermes-scout:v0.23.0-cc2.1.319` + sha tag pushed.
+
+- **2026-11-09 (ET)** — Rollout blocked at the PreSync fetch Job: ImagePullBackOff; `ghcr.io` token endpoint returns 401 to the anonymous fetch for the brand-new `dels78/hermes-scout` package (first pushed by the workflow’s `GITHUB_TOKEN` tonight). The ghcr-pull-secret pattern is proven — the same 1Password item pulls three other dels78 GHCR packages in three other namespaces — so the fix is owner-side package access (connect the homeops repo in the package settings) and/or confirming the secret materialized in the new hermes namespace (tracked on PERSO-727). Until the fetch Job pulls, Argo cannot apply the GB-05h deployment; the pre-05h pod remains in place. SHADOW validation (first Snapshot, zero external writes) is still pending this unblock.
 
 ### Profile / `dist/` gaps (feed back into GB issues)
 
@@ -115,7 +121,7 @@ Record dated notes here during and after the spike. Do **not** silently patch `d
 
 ### Go / no-go input for build step 5 (PERSO-728)
 
-- _YYYY-MM-DD — _
+- **2026-11-09 (ET)** — Go/no-go input for PERSO-728 remains open pending first SHADOW cycle; no model-supply issues observed (no gateway turn has run yet).
 
 ---
 
