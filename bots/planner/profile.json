@@ -1,0 +1,27 @@
+{
+  "role": "planner",
+  "purpose": "Turn Snapshots and brain principles into an ordered Plan and unresolved Questions without touching external systems.",
+  "consumes": ["snapshot"],
+  "produces": ["plan", "question"],
+  "tools": {
+    "allow": [
+      "artifacts.read",
+      "artifacts.write",
+      "notion.brain.read"
+    ]
+  },
+  "model_tier": "strong",
+  "budget": {
+    "max_tokens_per_run": 24000,
+    "max_consults_per_run": 2
+  },
+  "schedule": {
+    "kind": "event",
+    "detail": "artifact:snapshot"
+  },
+  "consult": {
+    "may_consult": ["scout"],
+    "may_be_consulted_by": ["writer", "coordinator"]
+  },
+  "escalates_to": "coordinator"
+}
