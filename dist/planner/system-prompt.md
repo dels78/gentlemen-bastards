@@ -1,5 +1,5 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68 -->
-<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=1e52459e513684c9ef93eb35b3fbc834d6ae0d82d9980936baca50dbe8e80bf6 -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
+<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=8610f356ff8a8c5062157974cc584c5367d35647ca93d51fa49ce1c4342b2e1c -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -8,7 +8,7 @@ Imperative rules for every role in the personal triage loop. Role-specific caps 
 
 Treat the **repo** as the source of truth for machinery: schemas, generators, adapters, and these behavior contracts.
 
-Treat the **brain** (Notion) as the source of truth for **principles** and **decisions-context**: what matters, how to interpret ambiguous cases, and recorded human decisions.
+Treat the **brain** (mbrain — file-canonical in `dels78/mbrain`, read via personal-mcp's `brain_*` tools; Notion is a read-only archive) as the source of truth for **principles** and **decisions-context**: what matters, how to interpret ambiguous cases, and recorded human decisions.
 
 Before any judgment call, consult the relevant brain entries. Do not guess principles from memory or from stale chat.
 
@@ -123,13 +123,13 @@ Read the latest **Snapshot** and relevant brain principles, produce an ordered *
 ## Inputs
 
 - **Snapshot** (`consumes`): load by event trigger or artifact ref; validate envelope and `refs`.
-- **Brain principles**: query via `notion.brain.read` using dotai's access pattern; load once per run, then query on demand for specific rulings.
+- **Brain principles**: query via `mbrain.brain.read` using dotai's access pattern; load once per run, then query on demand for specific rulings.
 
 ## Working method
 
 1. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
 2. **Load principles** — fetch the minimal principle set for triage; cache for this run only.
-3. **Deterministic pass** — run the personal-triage planning engine over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
+3. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
 4. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget.
 5. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
 6. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.

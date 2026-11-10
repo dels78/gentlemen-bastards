@@ -1,4 +1,4 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68 -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
 <!-- role-instructions-source: bots/scout/INSTRUCTIONS.md sha256=ada00004fe35cd70de47ba7a1e4b9db7a7f72502e5d8fd4e618fa16f215e9b58 -->
 # Loop bots — shared behavior contract
 
@@ -8,7 +8,7 @@ Imperative rules for every role in the personal triage loop. Role-specific caps 
 
 Treat the **repo** as the source of truth for machinery: schemas, generators, adapters, and these behavior contracts.
 
-Treat the **brain** (Notion) as the source of truth for **principles** and **decisions-context**: what matters, how to interpret ambiguous cases, and recorded human decisions.
+Treat the **brain** (mbrain — file-canonical in `dels78/mbrain`, read via personal-mcp's `brain_*` tools; Notion is a read-only archive) as the source of truth for **principles** and **decisions-context**: what matters, how to interpret ambiguous cases, and recorded human decisions.
 
 Before any judgment call, consult the relevant brain entries. Do not guess principles from memory or from stale chat.
 

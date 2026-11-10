@@ -33,7 +33,7 @@ flowchart LR
 Happy path handoffs are **peer-to-peer artifacts** (Scout → Planner → Writer).
 Questions and human decisions flow through **Coordinator** → Muse. **Herald**
 renders batched digests from Receipts and folds in health Reports; urgent items
-may use WhatsApp. **Librarian** mines Snapshots and Receipts over time and
+are flagged in the Report for immediate delivery via Muse. **Librarian** mines Snapshots and Receipts over time and
 proposes brain changes as Questions only.
 
 Consultation uses `consult-request` / `consult-response` artifacts (see

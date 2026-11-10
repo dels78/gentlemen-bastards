@@ -1,6 +1,6 @@
 # Loop bot behavior contracts
 
-These are the **gentlemen-bastards system's behavior contracts**: cross-cutting rules for the personal triage loop (scout, planner, writer, herald, librarian, coordinator) over email, Linear, and the Notion brain.
+These are the **gentlemen-bastards system's behavior contracts**: cross-cutting rules for the personal triage loop (scout, planner, writer, herald, librarian, coordinator) over email, Linear, and the brain (mbrain).
 
 ## Who consumes this
 

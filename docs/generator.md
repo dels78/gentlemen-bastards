@@ -40,7 +40,7 @@ Exit `0` if identical; exit `1` with a short diff summary if not. Use this in re
 python3 -m unittest discover -s generator
 ```
 
-`generator/test_generate.py` uses a synthetic `BEHAVIOR.md` in a temp dir for isolation. One policy check allows librarian non-artifact tools to use `notion.*` or `linear.*`: the GB-02 profile includes `linear.list_issues` and `linear.get_issue` for backlog tending (see `bots/librarian/INSTRUCTIONS.md`), while cross-cutting “brain via notion” behavior still lives in `contracts/BEHAVIOR.md`.
+`generator/test_generate.py` uses a synthetic `BEHAVIOR.md` in a temp dir for isolation. One policy check allows librarian non-artifact tools to use `mbrain.*` or `linear.*`: the GB-02 profile includes `linear.list_issues` and `linear.get_issue` for backlog tending (see `bots/librarian/INSTRUCTIONS.md`), while cross-cutting “brain via mbrain” behavior still lives in `contracts/BEHAVIOR.md`.
 
 ## `dist/` layout
 
@@ -73,7 +73,7 @@ Expected mapping direction (validated later, not implemented in GB-04):
 
 - `bundle.json` + `budget.json` + `schedule.json` → Hermes profile config
 - `tools.json` / `gateway-allowlists.json` → per-server MCP tool include lists (enforced again at personal-mcp)
-- Framework memory → disabled; brain access via Notion MCP under dotai's access pattern
+- Framework memory → disabled; brain access via personal-mcp `brain_*` tools (mbrain) under dotai's access pattern
 
 ## Writer `read_back_only`
 

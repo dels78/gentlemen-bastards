@@ -104,20 +104,22 @@ class GenerateTest(unittest.TestCase):
                 entry,
             )
 
-    def test_herald_non_artifacts_allow(self) -> None:
+    def test_herald_holds_no_non_artifact_tools(self) -> None:
+        # M2/M5: Herald delivers via Muse — no direct send surface in v1
+        # (whatsapp.send removed from Herald's allowlist).
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
         tools = json.loads((self.out_dir / "herald" / "tools.json").read_text())
-        non_artifacts = [t for t in tools["allow"] if t != "artifacts.read"]
-        self.assertEqual(non_artifacts, ["whatsapp.send"])
+        non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
+        self.assertEqual(non_artifacts, [])
 
-    def test_librarian_non_artifacts_allow_notion_prefix(self) -> None:
+    def test_librarian_non_artifacts_allow_mbrain_prefix(self) -> None:
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
         tools = json.loads((self.out_dir / "librarian" / "tools.json").read_text())
         non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
         # GB-02 librarian includes linear read tools for backlog dedupe (see INSTRUCTIONS).
         for entry in non_artifacts:
             self.assertTrue(
-                entry.startswith("notion.") or entry.startswith("linear."),
+                entry.startswith("mbrain.") or entry.startswith("linear."),
                 entry,
             )
 

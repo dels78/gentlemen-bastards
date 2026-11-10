@@ -218,15 +218,13 @@ def check_write_tools(profiles: dict[str, dict]) -> list[bool]:
                 tool.startswith("gmail.") or tool.startswith("linear.")
             ):
                 continue
-            if role == "herald" and tool.startswith("whatsapp.") and ".send" in tool:
-                continue
             if role == "coordinator" and tool.startswith("schedule."):
                 continue
             ok = False
             violations.append(f"{role}: {tool}")
     results.append(
         check(
-            "write/apply/send tools restricted to Writer (plus Herald whatsapp, Coordinator schedule)",
+            "write/apply/send tools restricted to Writer (plus Coordinator schedule)",
             ok,
             "; ".join(violations),
         )

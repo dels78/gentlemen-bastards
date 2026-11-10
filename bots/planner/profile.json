@@ -7,7 +7,8 @@
     "allow": [
       "artifacts.read",
       "artifacts.write",
-      "notion.brain.read"
+      "engine.plan",
+      "mbrain.brain.read"
     ]
   },
   "model_tier": "strong",

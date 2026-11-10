@@ -38,10 +38,10 @@ Schemas live in `protocol/schemas/` (JSON Schema draft 2020-12).
 
 ## Brain-proposal convention
 
-Brain-proposal is the loop's inbox for suggested brain (Notion) changes:
+Brain-proposal is the loop's inbox for suggested brain (mbrain) changes:
 
 - **Any role bot may propose** by emitting a `brain-proposal` artifact (`payload.proposer` names the originating bot role; `producer` is whoever wrote the artifact to the store).
-- **Proposer ≠ applier ≠ approver.** Proposals are artifacts only — they do not write the brain. The **Librarian** triages proposals, develops well-formed ones, and re-emits **Questions** for human approval. Only after approval does a human or Muse-directed apply step update Notion (outside this protocol).
+- **Proposer ≠ applier ≠ approver.** Proposals are artifacts only — they do not write the brain. The **Librarian** triages proposals, develops well-formed ones, and re-emits **Questions** for human approval. Only after approval does a human or Muse-directed apply step update the brain in mbrain (outside this protocol).
 - **`payload.target`** is an existing brain record id, or `null` when proposing a new record.
 - **`payload.change_kind`** is one of `create`, `amend`, `supersede`, or `archive`.
 - **`payload.evidence_refs`** must cite supporting artifact ids or durable source pointers (non-empty).
