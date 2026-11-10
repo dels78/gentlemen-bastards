@@ -1,11 +1,12 @@
 {
   "role": "herald",
-  "purpose": "Batch Receipts and related inputs into Reports and deliver genuinely urgent items via messaging.",
+  "purpose": "Batch Receipts and related inputs into Reports for Martin's digest and flag genuinely urgent items in the Report for immediate delivery via Muse.",
   "consumes": ["receipt", "report"],
   "produces": ["report"],
   "tools": {
     "allow": [
-      "artifacts.read"
+      "artifacts.read",
+      "artifacts.write"
     ]
   },
   "model_tier": "cheap",

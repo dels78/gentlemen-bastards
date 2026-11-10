@@ -109,7 +109,7 @@ class GenerateTest(unittest.TestCase):
         # (whatsapp.send removed from Herald's allowlist).
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
         tools = json.loads((self.out_dir / "herald" / "tools.json").read_text())
-        non_artifacts = [t for t in tools["allow"] if t != "artifacts.read"]
+        non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
         self.assertEqual(non_artifacts, [])
 
     def test_librarian_non_artifacts_allow_mbrain_prefix(self) -> None:

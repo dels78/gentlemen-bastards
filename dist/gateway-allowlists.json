@@ -10,7 +10,8 @@
   },
   "herald": {
     "allow": [
-      "artifacts.read"
+      "artifacts.read",
+      "artifacts.write"
     ]
   },
   "librarian": {
