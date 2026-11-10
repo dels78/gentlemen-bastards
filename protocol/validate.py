@@ -23,6 +23,7 @@ TYPE_CONSTANTS = {
     "consult-request": "consult-request",
     "consult-response": "consult-response",
     "brain-proposal": "brain-proposal",
+    "decision": "decision",
 }
 
 EXAMPLE_TO_TYPE = {
@@ -34,10 +35,14 @@ EXAMPLE_TO_TYPE = {
     "consult-request.json": "consult-request",
     "consult-response.json": "consult-response",
     "brain-proposal.json": "brain-proposal",
+    "question-brain-approval.json": "question",
+    "decision.json": "decision",
+    "receipt-brain-apply.json": "receipt",
 }
 
 INVALID_EXAMPLES = {
     "brain-proposal.invalid.json": "brain-proposal",
+    "decision.invalid.json": "decision",
 }
 
 
@@ -148,20 +153,50 @@ def check_refs_and_payload(doc: dict[str, Any], artifact_type: str) -> tuple[boo
         return True, ""
 
     if artifact_type == "receipt":
-        if not is_str(refs.get("plan_id")):
-            return False, "receipt refs.plan_id required string"
+        if is_str(refs.get("plan_id")):
+            # Plan receipt variant (Writer) — original behavior.
+            if "results" not in payload or not is_arr(payload["results"]):
+                return False, "receipt payload.results must be array"
+            for i, r in enumerate(payload["results"]):
+                if not is_obj(r):
+                    return False, f"receipt results[{i}] not object"
+                for req in ("object_ref", "status", "readback"):
+                    if req not in r:
+                        return False, f"receipt results[{i}] missing {req}"
+                if not is_str(r["object_ref"]) or not is_str(r["readback"]):
+                    return False, f"receipt results[{i}] object_ref/readback must be strings"
+                if r["status"] not in ("applied", "failed", "skipped"):
+                    return False, f"receipt results[{i}] invalid status"
+            return True, ""
+
+        # Brain-apply receipt variant (Librarian, gated apply — GB-728J D3).
+        if doc["producer"] != "librarian":
+            return False, "brain-apply receipt producer must be librarian"
+        extra_refs = set(refs.keys()) - {"decision_id", "question_id", "proposal_id"}
+        if extra_refs:
+            return False, f"brain-apply receipt unexpected refs: {sorted(extra_refs)}"
+        for req in ("decision_id", "question_id", "proposal_id"):
+            if not is_str(refs.get(req)):
+                return False, f"brain-apply receipt refs.{req} required string"
+        for req in ("pr_url", "branch", "base_sha", "head_sha"):
+            if not is_str(payload.get(req)):
+                return False, f"brain-apply receipt payload.{req} required string"
         if "results" not in payload or not is_arr(payload["results"]):
-            return False, "receipt payload.results must be array"
-        for i, r in enumerate(payload["results"]):
-            if not is_obj(r):
-                return False, f"receipt results[{i}] not object"
-            for req in ("object_ref", "status", "readback"):
-                if req not in r:
-                    return False, f"receipt results[{i}] missing {req}"
-            if not is_str(r["object_ref"]) or not is_str(r["readback"]):
-                return False, f"receipt results[{i}] object_ref/readback must be strings"
-            if r["status"] not in ("applied", "failed", "skipped"):
-                return False, f"receipt results[{i}] invalid status"
+            return False, "brain-apply receipt payload.results must be array"
+        if len(payload["results"]) != 1:
+            return False, "brain-apply receipt results must have exactly one entry"
+        r = payload["results"][0]
+        if not is_obj(r):
+            return False, "brain-apply receipt results[0] not object"
+        for req in ("object_ref", "status", "readback"):
+            if req not in r:
+                return False, f"brain-apply receipt results[0] missing {req}"
+        if not is_str(r["object_ref"]) or not is_str(r["readback"]):
+            return False, "brain-apply receipt results[0] object_ref/readback must be strings"
+        if r["status"] != "pr_opened":
+            return False, "brain-apply receipt results[0] status must be pr_opened"
+        if r["readback"] != payload["pr_url"]:
+            return False, "brain-apply receipt results[0] readback must equal payload.pr_url"
         return True, ""
 
     if artifact_type == "report":
@@ -228,6 +263,28 @@ def check_refs_and_payload(doc: dict[str, Any], artifact_type: str) -> tuple[boo
                 return False, f"brain-proposal evidence_refs[{i}] must be non-empty string"
         return True, ""
 
+    if artifact_type == "decision":
+        if doc["producer"] != "coordinator":
+            return False, "decision producer must be coordinator"
+        if refs:
+            return False, "decision refs must be the empty object"
+        allowed = {"decision", "subject_ref", "proposal_ref", "decided_by", "rationale"}
+        extra = set(payload.keys()) - allowed
+        if extra:
+            return False, f"decision payload unexpected fields: {sorted(extra)}"
+        if payload.get("decision") not in ("approved", "rejected"):
+            return False, "decision payload.decision must be approved or rejected"
+        for req in ("subject_ref", "proposal_ref"):
+            if not is_str(payload.get(req)) or not payload[req].strip():
+                return False, f"decision payload.{req} required non-empty string"
+        if payload.get("decided_by") != "martin":
+            return False, "decision payload.decided_by must be martin"
+        if "rationale" in payload and (
+            not is_str(payload["rationale"]) or not payload["rationale"].strip()
+        ):
+            return False, "decision payload.rationale must be non-empty string when present"
+        return True, ""
+
     return False, f"unknown artifact type {artifact_type!r}"
 
 
@@ -254,11 +311,13 @@ def main() -> int:
             all_pass = ok(f"parse schema {path.name}", False, str(e)) and all_pass
 
     examples: dict[str, dict[str, Any]] = {}
+    examples_by_file: dict[str, dict[str, Any]] = {}
     for filename, artifact_type in sorted(EXAMPLE_TO_TYPE.items()):
         path = EXAMPLE_DIR / filename
         try:
             doc = load_json(path)
             examples[artifact_type] = doc
+            examples_by_file[filename] = doc
             all_pass = ok(f"parse example {filename}", is_obj(doc)) and all_pass
         except (json.JSONDecodeError, OSError) as e:
             all_pass = ok(f"parse example {filename}", False, str(e)) and all_pass
@@ -303,6 +362,64 @@ def main() -> int:
         )
         all_pass = ok(
             "lineage consult-response.request_id == consult-request.id",
+            match,
+            "" if match else "ids differ",
+        ) and all_pass
+
+    # GB-728J chain: decision -> question (Librarian) -> brain-proposal
+    decision_doc = examples.get("decision")
+    approval_q = examples_by_file.get("question-brain-approval.json")
+    proposal_doc = examples.get("brain-proposal")
+    if decision_doc and approval_q and proposal_doc:
+        match = decision_doc["payload"].get("subject_ref") == approval_q["id"]
+        all_pass = ok(
+            "lineage decision.subject_ref == question-brain-approval.id",
+            match,
+            "" if match else "ids differ",
+        ) and all_pass
+
+        match = decision_doc["payload"].get("proposal_ref") == proposal_doc["id"]
+        all_pass = ok(
+            "lineage decision.proposal_ref == brain-proposal.id",
+            match,
+            "" if match else "ids differ",
+        ) and all_pass
+
+        match = approval_q["refs"].get("artifact_id") == proposal_doc["id"]
+        all_pass = ok(
+            "lineage question-brain-approval.artifact_id == brain-proposal.id",
+            match,
+            "" if match else "ids differ",
+        ) and all_pass
+
+        match = approval_q.get("producer") == "librarian"
+        all_pass = ok(
+            "question-brain-approval producer is librarian",
+            match,
+            "" if match else "producer differs",
+        ) and all_pass
+
+    # GB-728J chain: brain-apply receipt -> decision/question/brain-proposal
+    ba_receipt = examples_by_file.get("receipt-brain-apply.json")
+    if ba_receipt and decision_doc and approval_q and proposal_doc:
+        refs = ba_receipt["refs"]
+        match = refs.get("decision_id") == decision_doc["id"]
+        all_pass = ok(
+            "lineage receipt-brain-apply.decision_id == decision.id",
+            match,
+            "" if match else "ids differ",
+        ) and all_pass
+
+        match = refs.get("question_id") == approval_q["id"]
+        all_pass = ok(
+            "lineage receipt-brain-apply.question_id == question-brain-approval.id",
+            match,
+            "" if match else "ids differ",
+        ) and all_pass
+
+        match = refs.get("proposal_id") == proposal_doc["id"]
+        all_pass = ok(
+            "lineage receipt-brain-apply.proposal_id == brain-proposal.id",
             match,
             "" if match else "ids differ",
         ) and all_pass
