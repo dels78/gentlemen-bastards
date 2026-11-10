@@ -6,7 +6,7 @@ Imperative rules for every role in the personal triage loop. Role-specific caps 
 
 Treat the **repo** as the source of truth for machinery: schemas, generators, adapters, and these behavior contracts.
 
-Treat the **brain** (Notion) as the source of truth for **principles** and **decisions-context**: what matters, how to interpret ambiguous cases, and recorded human decisions.
+Treat the **brain** (mbrain — file-canonical in `dels78/mbrain`, read via personal-mcp's `brain_*` tools; Notion is a read-only archive) as the source of truth for **principles** and **decisions-context**: what matters, how to interpret ambiguous cases, and recorded human decisions.
 
 Before any judgment call, consult the relevant brain entries. Do not guess principles from memory or from stale chat.
 

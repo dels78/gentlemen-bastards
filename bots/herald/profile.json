@@ -5,8 +5,7 @@
   "produces": ["report"],
   "tools": {
     "allow": [
-      "artifacts.read",
-      "whatsapp.send"
+      "artifacts.read"
     ]
   },
   "model_tier": "cheap",

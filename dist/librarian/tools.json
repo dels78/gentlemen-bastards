@@ -1,6 +1,6 @@
 {
   "allow": [
-    "notion.brain.read",
+    "mbrain.brain.read",
     "artifacts.read",
     "artifacts.write",
     "linear.list_issues",

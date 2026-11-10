@@ -1,6 +1,6 @@
 {
   "behavior": "contracts/BEHAVIOR.md",
-  "behavior_sha256": "59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68",
+  "behavior_sha256": "9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271",
   "generator": "generator/generate.py",
   "roles": [
     "coordinator",
@@ -13,18 +13,18 @@
   "sources": {
     "bots/coordinator/INSTRUCTIONS.md": "35c43bc032f9bbec19abf6407e78d39e42e2e0e19a45ade4d5ca52217bd1b5d1",
     "bots/coordinator/profile.json": "f8e3761ef36d8717f31c5e82b6389942873190aa5089d1043a71ded564f441f6",
-    "bots/herald/INSTRUCTIONS.md": "19fb97e3d51c4f564336fef7d413f022378520d8beda16053d5eede4905be692",
-    "bots/herald/profile.json": "15bf32d25b09e7c4040ffa5cf74ff029d3ca52a3fc91a657562e97f9478c856c",
-    "bots/librarian/INSTRUCTIONS.md": "1a520b6b3ed779d3ce4db3a199922c6bca17f754d444126de55fdceb93709627",
-    "bots/librarian/profile.json": "7413e24caedbfd4e26ebde748745a1cdcfa6861bf86712db7584fbd4ec2fe30d",
-    "bots/planner/INSTRUCTIONS.md": "1e52459e513684c9ef93eb35b3fbc834d6ae0d82d9980936baca50dbe8e80bf6",
-    "bots/planner/profile.json": "2b4ec22978dd933516252826a29155e8a2b0c5615c11e67d366651ac423ad3fe",
+    "bots/herald/INSTRUCTIONS.md": "d1ec7d7237ab84fae278ccfcc98b388d4cab66007c694b1ae4704bd15cf2cd24",
+    "bots/herald/profile.json": "4c171a92909e5915adea17c6e65e232d7ef7eda02f7333653cac595702aa75d0",
+    "bots/librarian/INSTRUCTIONS.md": "26a6b20718ded4e4ede2274378e7596ae3ff6a0372ee4c67b885c4eb6dc1b4ed",
+    "bots/librarian/profile.json": "6291ee254c97516bf3c50e82e233a8203f549b4dcd6a5802d4d3ec37d4690ce9",
+    "bots/planner/INSTRUCTIONS.md": "8610f356ff8a8c5062157974cc584c5367d35647ca93d51fa49ce1c4342b2e1c",
+    "bots/planner/profile.json": "91745c67eba41350d21cdea348e5e8851f42c0a01c2279f6d8dfc56e2c488540",
     "bots/scout/INSTRUCTIONS.md": "ada00004fe35cd70de47ba7a1e4b9db7a7f72502e5d8fd4e618fa16f215e9b58",
     "bots/scout/profile.json": "16ff929a40e1bbfe23903dab08620b947ae5d8a17f5d2296ea0b34066200d8f2",
     "bots/writer/INSTRUCTIONS.md": "4c858254e73f62000237b8111465cdaf93a6a14da43aebdc8f30c606023f71b6",
     "bots/writer/profile.json": "0cce58ec12bcb76c6e80b0c9a7fa53ab25435ed2eddaf5823bc2e8a0c870ccd5",
-    "contracts/BEHAVIOR.md": "59376bcbd5c9a47e2cd1e2e4f84fa8712901997ffdae4db4701fbce7eda4ec68",
-    "contracts/README.md": "27df71f81a4b351d50c948a95887224a8fef92312ccc39f1835ff10abc5f2dda",
+    "contracts/BEHAVIOR.md": "9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271",
+    "contracts/README.md": "faed32151c5b8af1ed4a0ddfa16df9f28e50244ac0520f8782a9579a8a5266d6",
     "contracts/ROLES.md": "ff175bae9e975aa1b57260a73611e2270b862d3f96951cd6a2498f6b0a20f20b"
   }
 }

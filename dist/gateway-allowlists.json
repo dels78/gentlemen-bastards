@@ -10,13 +10,12 @@
   },
   "herald": {
     "allow": [
-      "artifacts.read",
-      "whatsapp.send"
+      "artifacts.read"
     ]
   },
   "librarian": {
     "allow": [
-      "notion.brain.read",
+      "mbrain.brain.read",
       "artifacts.read",
       "artifacts.write",
       "linear.list_issues",
@@ -27,7 +26,8 @@
     "allow": [
       "artifacts.read",
       "artifacts.write",
-      "notion.brain.read"
+      "engine.plan",
+      "mbrain.brain.read"
     ]
   },
   "scout": {
