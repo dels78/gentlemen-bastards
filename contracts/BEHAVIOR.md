@@ -24,7 +24,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`, `decision`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -36,7 +36,7 @@ No free-form bot-to-bot chat. No side channels.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
 
-**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain. The Librarian's only apply path is the gated PR-opening tool (`brain_apply_gated` in personal-mcp), invoked only after Martin's approval has been recorded as a `decision` artifact; it opens a pull request in mbrain and never commits directly to `main`.
 
 ## 4. Separation of duty
 
@@ -65,6 +65,8 @@ Log every consult. Enforce a **per-run consult budget**. On budget exhaustion, *
 **Human decisions** are never peer-consulted and never taken by a bot.
 
 Escalate: **coordinator → Muse → the human**.
+
+The human's answers come back down the same path and are recorded by the **Coordinator** as `decision` artifacts. **No bot may mint or alter that record**; in particular, the bot that will act on a decision never records it.
 
 Record the human’s answers deliberately in the **brain**, the **code**, or **these instructions**—not only in chat.
 
