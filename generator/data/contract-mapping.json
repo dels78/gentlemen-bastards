@@ -23,7 +23,7 @@
     {"contract": "linear.list_issues", "role": "librarian", "tool": "list_issues", "server": "linear", "server_entry": "librarian-portal", "kind": "read", "read_back_only": false, "basis": "D7 / D5 (A8 narrowing)"}
   ],
   "personal_mcp_rows": [
-    {"contract": "gmail.apply", "role": "writer", "tools": "group:gmail", "server_entry": "personal-mcp", "basis": "D7: unchanged, personal-mcp gmail_* names (email send stays on IMAP, fact (b))"}
+    {"contract": "gmail.apply", "role": "writer", "tools": ["gmail_archive", "gmail_archive_batch", "gmail_mark_read", "gmail_mark_unread", "gmail_request_delete", "gmail_label", "gmail_remove_label", "gmail_request_send"], "server_entry": "personal-mcp", "basis": "D7: personal-mcp gmail_* names (email send stays on IMAP, fact (b)). 728-D D5 step 3 SHADOW withholding: formerly group:gmail (10 names); gmail_send + gmail_delete are withheld server-side for sub=writer and excluded here — restore is a paired change on both sides."}
   ],
   "explicitly_unmapped": [
     {"role": "writer", "server": "linear", "tools": ["save_document"], "reason": "D7/§5 item 2: no contract verb; needs a contract amendment first"},

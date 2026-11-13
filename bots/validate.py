@@ -457,26 +457,32 @@ def validate_role_config(
     """728-E/F D8 checks for one rendered role config. Pure — returns results."""
     out: list[tuple[str, bool, str]] = []
     upper = role.upper()
-    portal_cfg = role_cfg["portal"]
-    entry = portal_cfg["entry"]
+    portal_cfg = role_cfg.get("portal")
+    entry = portal_cfg["entry"] if portal_cfg else None
     servers = config.get("mcp_servers") or {}
     pm = servers.get("personal-mcp") or {}
-    portal = servers.get(entry) or {}
+    portal = servers.get(entry) or {} if entry else {}
     portal_include = list((portal.get("tools") or {}).get("include") or [])
     pm_include = list((pm.get("tools") or {}).get("include") or [])
-    all_includes = {"personal-mcp": pm_include, entry: portal_include}
+    all_includes = {"personal-mcp": pm_include}
+    if entry:
+        all_includes[entry] = portal_include
+    server_pairs = [("personal-mcp", pm)]
+    if entry:
+        server_pairs.append((entry, portal))
 
     # Shape (728-D D2).
     model = config.get("model") or {}
     shape_bad: list[str] = []
     if set(config) != {"model", "mcp_servers"}:
         shape_bad.append(f"top-level keys {sorted(config)}")
-    if set(servers) != {"personal-mcp", entry}:
+    want_servers = {"personal-mcp", entry} if entry else {"personal-mcp"}
+    if set(servers) != want_servers:
         shape_bad.append(f"servers {sorted(servers)}")
     want_model = {k: v for k, v in role_cfg["model"].items() if k != "note"}
     if model != want_model:
         shape_bad.append(f"model {model}")
-    for name, srv in (("personal-mcp", pm), (entry, portal)):
+    for name, srv in server_pairs:
         tools = srv.get("tools") or {}
         if not (
             srv.get("enabled") is True
@@ -493,14 +499,15 @@ def validate_role_config(
     # Secrets: ${VAR} refs only, and only this role's own vars (728-D D3).
     want_headers = {
         "personal-mcp": {"Authorization": f"Bearer ${{MCP_SERVICE_TOKEN_{upper}}}"},
-        entry: {
+    }
+    if entry:
+        want_headers[entry] = {
             "CF-Access-Client-Id": f"${{CF_ACCESS_CLIENT_ID_{upper}}}",
             "CF-Access-Client-Secret": f"${{CF_ACCESS_CLIENT_SECRET_{upper}}}",
-        },
-    }
+        }
     hdr_bad = [
         f"{name}: {srv.get('headers')}"
-        for name, srv in (("personal-mcp", pm), (entry, portal))
+        for name, srv in server_pairs
         if srv.get("headers") != want_headers[name]
     ]
     out.append((f"{role}: headers are own-role ${{VAR}} refs only", not hdr_bad, "; ".join(hdr_bad)))
@@ -516,6 +523,15 @@ def validate_role_config(
         pm_include == want_pm,
         f"got={pm_include}" if pm_include != want_pm else "",
     ))
+
+    if entry is None:
+        # Personal-mcp-only role: no portal entry, so the portal-specific
+        # D8 checks (1/3/5) have no surface. D8-2 still applies to the
+        # personal-mcp include list.
+        dotted_pm = [n for n in pm_include if "." in str(n)]
+        out.append((f"{role}: [D8-2] no dotted contract names in includes", not dotted_pm, "; ".join(dotted_pm)))
+        out.append((f"{role}: personal-mcp-only config carries no portal server", set(servers) == {"personal-mcp"}, f"servers={sorted(servers)}"))
+        return out
 
     # D8 check 1: every portal include name is in the recorded read-back set,
     # and the read-back artifact is internally consistent.
@@ -609,16 +625,50 @@ def check_role_configs(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
         except ValueError as exc:
             results.append(check(f"{role}: config.yaml parses", False, str(exc)))
             continue
-        readback = json.loads(
-            (data_dir / role_cfg["portal"]["readback"]).read_text(encoding="utf-8")
-        )
-        if readback["tools_list_capture"].get("pending"):
-            print(f"NOTE: {role}: portal tools/list capture is partial — {readback['tools_list_capture']['pending']}")
+        readback = None
+        if "portal" in role_cfg:
+            readback = json.loads(
+                (data_dir / role_cfg["portal"]["readback"]).read_text(encoding="utf-8")
+            )
+            if readback["tools_list_capture"].get("pending"):
+                print(f"NOTE: {role}: portal tools/list capture is partial — {readback['tools_list_capture']['pending']}")
         tools_json = json.loads((dist_dir / role / "tools.json").read_text(encoding="utf-8"))
         for name, ok, detail in validate_role_config(
             role, config, role_cfg, role_data["personal_mcp"], mapping, readback, tools_json
         ):
             results.append(check(name, ok, detail))
+    return results
+
+
+def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> list[bool]:
+    """728-D plan D3 / 728-EF D10: rendered gate scripts exist, parse, and
+    carry exactly the role's wake kinds from role-configs.json."""
+    results: list[bool] = []
+    role_data = json.loads((data_dir / "role-configs.json").read_text(encoding="utf-8"))
+    for role, role_cfg in sorted(role_data["roles"].items()):
+        kinds = role_cfg.get("gate_wake_kinds")
+        gate_path = dist_dir / role / "scripts" / "gate.py"
+        if kinds is None:
+            continue
+        if not gate_path.is_file():
+            results.append(check(f"{role}: dist scripts/gate.py present", False, str(gate_path)))
+            continue
+        text = gate_path.read_text(encoding="utf-8")
+        bad: list[str] = []
+        try:
+            compile(text, str(gate_path), "exec")
+        except SyntaxError as exc:
+            bad.append(f"syntax: {exc}")
+        if "__WAKE_KINDS__" in text:
+            bad.append("unrendered __WAKE_KINDS__ placeholder")
+        for kind in kinds:
+            if f'"{kind}"' not in text:
+                bad.append(f"wake kind {kind!r} missing")
+        if "MCP_SERVICE_TOKEN_" not in text or "wakeAgent" not in text:
+            bad.append("token var / wakeAgent output missing")
+        if "personal-mcp.personal-mcp.svc.cluster.local" not in text:
+            bad.append("in-cluster personal-mcp URL missing")
+        results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
     return results
 
 
@@ -646,6 +696,7 @@ def main() -> int:
         results.extend(check_write_tools(profiles))
         results.extend(check_writer_only_external_writes(profiles))
     results.extend(check_role_configs())
+    results.extend(check_gate_scripts())
     results.extend(check_all_config_includes_undotted())
 
     if all(results):
