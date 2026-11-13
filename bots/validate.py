@@ -193,6 +193,8 @@ def load_profiles() -> tuple[dict[str, dict], list[bool]]:
 
 CONSULT_BLOCK_MARKER = "<!-- consult-inbox-protocol:v1 -->"
 CONSULT_BLOCK_HEADING = "## Consult inbox protocol"
+MARKING_SECTION_HEADING = "### Marking discipline"
+MARKING_SILENT_PHRASE = "`[SILENT]`"
 
 _PARAM_PATTERNS = {
     "may": re.compile(r"^- May consult: (.+) \(max (\d+) per run\)$", re.M),
@@ -235,7 +237,10 @@ def check_consult_inbox_block(profiles: dict[str, dict]) -> list[bool]:
     """728-G B2: every role's INSTRUCTIONS.md carries the Consult inbox
     protocol block, and its stated parameters equal profile.json's
     consult/budget/schedule values — the block must not drift from the
-    enforced matrix silently."""
+    enforced matrix silently. The block must also carry the Marking
+    discipline section (728-D enablements follow-up: a gated turn that
+    answers [SILENT] without marking evaluated artifacts processed
+    re-fires the wake gate every tick)."""
     results: list[bool] = []
     for bot in sorted(EXPECTED_BOTS):
         prof = profiles.get(bot)
@@ -297,6 +302,10 @@ def check_consult_inbox_block(profiles: dict[str, dict]) -> list[bool]:
                 not problems,
                 "; ".join(problems),
             )
+        )
+        marking_ok = MARKING_SECTION_HEADING in text and MARKING_SILENT_PHRASE in text
+        results.append(
+            check(f"{bot}: marking discipline section present", marking_ok)
         )
     return results
 
