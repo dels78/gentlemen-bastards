@@ -199,11 +199,19 @@ class GenerateTest(unittest.TestCase):
             inst_idx = prompt.index(instructions.strip())
             self.assertLess(beh_idx, inst_idx)
 
-    def test_config_yaml_only_for_portal_roles(self) -> None:
+    def test_config_yaml_only_for_role_config_roles(self) -> None:
+        # Every role in role-configs.json gets a config.yaml: portal roles
+        # (writer, librarian) and personal-mcp-only roles (planner, herald,
+        # coordinator). Scout's is hand-authored in committed dist/ and is
+        # NOT generated, so a fresh render has none for scout.
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
         for role in EXPECTED_ROLES:
             has = (self.out_dir / role / "config.yaml").is_file()
-            self.assertEqual(has, role in ("writer", "librarian"), role)
+            self.assertEqual(
+                has,
+                role in ("writer", "librarian", "planner", "herald", "coordinator"),
+                role,
+            )
 
     def test_rendered_includes_exact(self) -> None:
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
@@ -212,7 +220,20 @@ class GenerateTest(unittest.TestCase):
             writer["mcp_servers"]["writer-portal"]["tools"]["include"],
             WRITER_CONSTRUCTION_SERVED,
         )
-        self.assertEqual(len(writer["mcp_servers"]["personal-mcp"]["tools"]["include"]), 18)
+        writer_pm = writer["mcp_servers"]["personal-mcp"]["tools"]["include"]
+        # 728-D D5 step 3 SHADOW withholding: gmail_send + gmail_delete are
+        # excluded (server-side scope and include move together); 16 remain.
+        self.assertEqual(len(writer_pm), 16)
+        self.assertNotIn("gmail_send", writer_pm)
+        self.assertNotIn("gmail_delete", writer_pm)
+        self.assertEqual(
+            writer_pm[:8],
+            [
+                "gmail_archive", "gmail_archive_batch", "gmail_mark_read",
+                "gmail_mark_unread", "gmail_request_delete", "gmail_label",
+                "gmail_remove_label", "gmail_request_send",
+            ],
+        )
         librarian = load_config(self.out_dir, "librarian")
         self.assertEqual(
             librarian["mcp_servers"]["librarian-portal"]["tools"]["include"],
@@ -223,11 +244,75 @@ class GenerateTest(unittest.TestCase):
         self.assertIn("brain_apply_gated", pm)
         self.assertEqual(librarian["model"]["default"], "claude-sonnet-5-5")
 
+        # Personal-mcp-only roles (728-D renders): single server, exact scopes.
+        planner = load_config(self.out_dir, "planner")
+        self.assertEqual(set(planner["mcp_servers"]), {"personal-mcp"})
+        self.assertEqual(
+            planner["mcp_servers"]["personal-mcp"]["tools"]["include"],
+            [
+                "artifacts_write", "artifacts_read", "artifacts_list",
+                "artifacts_mark_processed", "runs_begin", "runs_finish",
+                "runs_get", "runs_list", "brain_status", "brain_scan",
+                "brain_get", "brain_search", "brain_traverse", "engine_plan",
+            ],
+        )
+        self.assertEqual(planner["model"]["default"], "claude-sonnet-5-5")
+        self.assertEqual(planner["model"]["context_length"], 1000000)
+        for role in ("herald", "coordinator"):
+            cfg = load_config(self.out_dir, role)
+            self.assertEqual(set(cfg["mcp_servers"]), {"personal-mcp"}, role)
+            self.assertEqual(
+                cfg["mcp_servers"]["personal-mcp"]["tools"]["include"],
+                [
+                    "artifacts_write", "artifacts_read", "artifacts_list",
+                    "artifacts_mark_processed", "runs_begin", "runs_finish",
+                    "runs_get", "runs_list",
+                ],
+                role,
+            )
+            self.assertEqual(cfg["model"]["default"], "claude-haiku-5-5", role)
+
+    def test_gate_scripts_rendered_and_fail_closed(self) -> None:
+        run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
+        expected_kinds = {
+            "coordinator": ("question", "consult-request", "consult-response"),
+            "planner": ("snapshot", "consult-request", "consult-response", "report"),
+            "writer": ("plan", "consult-request", "consult-response", "report"),
+            "herald": ("receipt", "report", "consult-response"),
+            "librarian": ("snapshot", "receipt", "brain-proposal", "consult-request", "consult-response", "report"),
+        }
+        for role, kinds in expected_kinds.items():
+            gate = self.out_dir / role / "scripts" / "gate.py"
+            self.assertTrue(gate.is_file(), role)
+            text = gate.read_text()
+            compile(text, str(gate), "exec")
+            for kind in kinds:
+                self.assertIn(f'"{kind}"', text, f"{role}: {kind}")
+        self.assertFalse((self.out_dir / "scout" / "scripts" / "gate.py").exists())
+        # Fail-closed: with no .env in the profile home the gate exits
+        # non-zero and prints no wakeAgent line (Hermes wakes — safe).
+        home = Path(self._tmpdir) / "planner"
+        scripts = home / "scripts"
+        scripts.mkdir(parents=True)
+        shutil.copy(self.out_dir / "planner" / "scripts" / "gate.py", scripts / "gate.py")
+        result = subprocess.run(
+            [sys.executable, str(scripts / "gate.py")],
+            capture_output=True, text=True,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn("wakeAgent", result.stdout)
+
     def test_renders_match_committed_dist(self) -> None:
         # Full --check is blocked by pre-existing system-prompt/manifest drift
         # from PR #16; pin the files this generator change owns byte-for-byte.
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
-        for rel in ("writer/config.yaml", "librarian/config.yaml", "writer/tools.json"):
+        for rel in (
+            "writer/config.yaml", "librarian/config.yaml", "writer/tools.json",
+            "planner/config.yaml", "herald/config.yaml", "coordinator/config.yaml",
+            "coordinator/scripts/gate.py", "planner/scripts/gate.py",
+            "writer/scripts/gate.py", "herald/scripts/gate.py",
+            "librarian/scripts/gate.py",
+        ):
             self.assertEqual(
                 (self.out_dir / rel).read_bytes(),
                 (REPO_ROOT / "dist" / rel).read_bytes(),
@@ -299,7 +384,10 @@ class ValidateRoleConfigTest(unittest.TestCase):
             "role_cfg": role_cfg,
             "personal_mcp": self.role_data["personal_mcp"],
             "mapping": self.mapping,
-            "readback": json.loads((DATA_DIR / role_cfg["portal"]["readback"]).read_text()),
+            "readback": (
+                json.loads((DATA_DIR / role_cfg["portal"]["readback"]).read_text())
+                if "portal" in role_cfg else None
+            ),
             "tools_json": json.loads((REPO_ROOT / "dist" / role / "tools.json").read_text()),
         }
 
@@ -311,7 +399,7 @@ class ValidateRoleConfigTest(unittest.TestCase):
         return inputs["config"]["mcp_servers"][entry]["tools"]["include"]
 
     def test_committed_renders_pass(self) -> None:
-        for role in ("writer", "librarian"):
+        for role in ("writer", "librarian", "planner", "herald", "coordinator"):
             results = self._run(self._inputs(role))
             self.assertTrue(all(results.values()), (role, results))
 

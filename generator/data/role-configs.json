@@ -1,5 +1,5 @@
 {
-  "_comment": "Pinned per-role inputs for dist/<role>/config.yaml (specs/728-D.md D2 shape; specs/728-EF.md D6/D8). Only roles listed here get a generated config.yaml. Portal include = the union of `phases[p]` for p in `active_phases`, mapped through contract-mapping.json and prefixed to served names. A W-step is a data change here (+ the matching Cloudflare flip), never a code change. W1-W3 sets are recorded but NOT rendered until listed in active_phases.",
+  "_comment": "Pinned per-role inputs for dist/<role>/config.yaml (specs/728-D.md D2 shape; specs/728-EF.md D6/D8). Only roles listed here get a generated config.yaml. Portal include = the union of `phases[p]` for p in `active_phases`, mapped through contract-mapping.json and prefixed to served names. A W-step is a data change here (+ the matching Cloudflare flip), never a code change. W1-W3 sets are recorded but NOT rendered until listed in active_phases. Roles without a `portal` key are personal-mcp-only: they render a single-server config.yaml (model + personal-mcp). `gate_wake_kinds` (728-D plan D3; 728-EF D10) renders dist/<role>/scripts/gate.py from generator/data/gate.py.tmpl — one shared logic, per-role wake-kind constants.",
   "personal_mcp": {
     "url": "http://personal-mcp.personal-mcp.svc.cluster.local:80/mcp",
     "source": "personal-mcp src/auth/tool_scopes.json @ cab7aaa (main, byte-identical when read 2026-11-13); live tools/list counts writer 18 / librarian 14 confirmed by the 728-C batch (mint-harvest-2026-11-10.md)",
@@ -18,7 +18,9 @@
         "context_length": 1000000,
         "note": null
       },
-      "personal_mcp_allow": ["group:gmail", "group:artifacts", "group:runs"],
+      "personal_mcp_allow": ["gmail_archive", "gmail_archive_batch", "gmail_mark_read", "gmail_mark_unread", "gmail_request_delete", "gmail_label", "gmail_remove_label", "gmail_request_send", "group:artifacts", "group:runs"],
+      "personal_mcp_note": "SHADOW withholding (728-D D5 step 3): gmail_send and gmail_delete are withheld — sub=writer loses both server-side in personal-mcp src/auth/tool_scopes.json, and this include list matches (include ⊆ scope is a hard battery rule). This replaces the former group:gmail expansion (10 names) with the explicit 8-name list. Restore is a paired change: re-add gmail_send + gmail_delete here AND restore them to writer's server-side scope in the same change set; never one side alone.",
+      "gate_wake_kinds": ["plan", "consult-request", "consult-response", "report"],
       "portal": {
         "entry": "writer-portal",
         "readback": "portal-readback/writer.json",
@@ -46,9 +48,10 @@
         "provider": "claude-subscription-directsdk-experimental",
         "default": "claude-sonnet-5-5",
         "context_length": 1000000,
-        "note": "strong tier: model id pinned from live evidence (da-03-claude-oauth-note.md, HTTP 200 on the subscription route, 2026-11-08). context_length is carried from the cheap tier and is UNVERIFIED pending the Stage-0 subscription catalog read (728-D U1)."
+        "note": "strong tier: U1 SETTLED (2026-11-13) — the subscription plugin catalog (NousResearch/hermes-official-plugins @ 83f0a89, claude-subscription-directsdk/model_catalog.py) pins claude-sonnet-5-5 to context window 1_000_000; provider claude-subscription-directsdk-experimental, context_length 1000000."
       },
       "personal_mcp_allow": ["group:artifacts", "group:runs", "group:brain_read", "brain_apply_gated"],
+      "gate_wake_kinds": ["snapshot", "receipt", "brain-proposal", "consult-request", "consult-response", "report"],
       "portal": {
         "entry": "librarian-portal",
         "readback": "portal-readback/librarian.json",
@@ -59,6 +62,36 @@
           }
         }
       }
+    },
+    "planner": {
+      "model": {
+        "provider": "claude-subscription-directsdk-experimental",
+        "default": "claude-sonnet-5-5",
+        "context_length": 1000000,
+        "note": "strong tier: U1 SETTLED (2026-11-13) — the subscription plugin catalog (NousResearch/hermes-official-plugins @ 83f0a89, claude-subscription-directsdk/model_catalog.py) pins claude-sonnet-5-5 to context window 1_000_000; provider claude-subscription-directsdk-experimental, context_length 1000000."
+      },
+      "personal_mcp_allow": ["group:artifacts", "group:runs", "group:brain_read", "engine_plan"],
+      "gate_wake_kinds": ["snapshot", "consult-request", "consult-response", "report"]
+    },
+    "herald": {
+      "model": {
+        "provider": "claude-subscription-directsdk-experimental",
+        "default": "claude-haiku-5-5",
+        "context_length": 1000000,
+        "note": null
+      },
+      "personal_mcp_allow": ["group:artifacts", "group:runs"],
+      "gate_wake_kinds": ["receipt", "report", "consult-response"]
+    },
+    "coordinator": {
+      "model": {
+        "provider": "claude-subscription-directsdk-experimental",
+        "default": "claude-haiku-5-5",
+        "context_length": 1000000,
+        "note": null
+      },
+      "personal_mcp_allow": ["group:artifacts", "group:runs"],
+      "gate_wake_kinds": ["question", "consult-request", "consult-response"]
     }
   }
 }

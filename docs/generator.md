@@ -53,7 +53,8 @@ python3 -m unittest discover -s generator
 | `tools.json` | `{"allow": [...]}` from profile; **writer** also has `read_back_only` and a `portal` block (see below) |
 | `schedule.json` | `profile.json` → `schedule` verbatim |
 | `budget.json` | `{"budget": ..., "consult": ...}` from profile |
-| `config.yaml` | writer + librarian only: Hermes profile config (see "Per-profile `config.yaml`") |
+| `config.yaml` | writer, librarian, planner, herald, coordinator: Hermes profile config (see "Per-profile `config.yaml`"). Scout's is hand-authored, not generated |
+| `scripts/gate.py` | roles with `gate_wake_kinds` in role-configs.json (all five generated roles): cron wake gate (see "Gate scripts") |
 
 Roles are emitted in sorted name order.
 
@@ -78,7 +79,7 @@ Expected mapping direction (validated later, not implemented in GB-04):
 
 ## Per-profile `config.yaml` (728-F; 728-D D2 shape)
 
-For every role listed in `generator/data/role-configs.json` (today: **writer**, **librarian**) the generator also emits `dist/<role>/config.yaml` — the Hermes profile user layer: `model` block + `personal-mcp` entry + the role's Cloudflare portal entry (`writer-portal` / `librarian-portal`). Scout's `dist/scout/config.yaml` is still hand-authored (728-D prerequisite) and not generated.
+For every role listed in `generator/data/role-configs.json` (today: **writer**, **librarian**, **planner**, **herald**, **coordinator**) the generator also emits `dist/<role>/config.yaml` — the Hermes profile user layer: `model` block + `personal-mcp` entry + the role's Cloudflare portal entry (`writer-portal` / `librarian-portal`) where the role has one. Planner, herald and coordinator are personal-mcp-only: no `portal` key in role-configs.json, and their renders carry the single `personal-mcp` server. Scout's `dist/scout/config.yaml` is still hand-authored (728-D prerequisite) and not generated — a full generator run deletes it from `dist/`; restore it before committing (the known F1 hazard).
 
 Inputs under `generator/data/` (all non-secret):
 
@@ -95,6 +96,12 @@ Rules the generator enforces:
 - Secrets are `${VAR}` refs only: `${MCP_SERVICE_TOKEN_<ROLE>}`, `${CF_ACCESS_CLIENT_ID_<ROLE>}`, `${CF_ACCESS_CLIENT_SECRET_<ROLE>}`.
 
 Writer's `tools.json` gains a `portal` block (`include`, `read_back_only`, `write_capable` in served names) so the read-back-only classification survives at the real-name level (D8 item 3).
+
+Writer's personal-mcp include is the explicit 8-name gmail list, not `group:gmail`: `gmail_send` and `gmail_delete` are SHADOW-withheld server-side for `sub=writer` (728-D D5 step 3), and the include must stay within the server-side scope. Restoring them is a paired change (role-configs.json + personal-mcp `tool_scopes.json` together).
+
+## Gate scripts (`scripts/gate.py`; 728-D plan D3, 728-EF D10)
+
+For every role with `gate_wake_kinds` in `role-configs.json` the generator renders `dist/<role>/scripts/gate.py` from the shared template `generator/data/gate.py.tmpl` — one shared logic, per-role wake-kind constants. The fetch hook lays `dist/<role>/scripts/*` into `<profile home>/scripts/`, where Hermes' cron scheduler runs it as a pre-run gate: the last stdout line `{"wakeAgent": false}` skips the model run; any failure wakes (safe direction), so the script exits non-zero with no `wakeAgent` line on any error. The script derives its role from its home directory name, reads `MCP_SERVICE_TOKEN_<ROLE>` from `<home>/.env`, and makes one unfiltered `artifacts_list(unprocessed_for=<role>, limit=500)` call to the in-cluster personal-mcp server, type-filtering client-side against its wake kinds (the D10 fallback shape). Wake kinds per role live in `role-configs.json`; `bots/validate.py` checks each rendered gate carries exactly its kinds.
 
 `bots/validate.py` checks each rendered config: D2 shape and own-role `${VAR}` headers; **[D8-1]** portal includes ⊆ the committed read-back's enabled served names; **[D8-2]** no dotted contract names in any include (all `dist/*/config.yaml`); **[D8-3]** no inactive-phase (W1/W2/W3), unmapped, or absent-on-portal name in any include, prefixed or not; **[D8-4]** writer `read_back_only` present in `tools.json` and disjoint from `write_capable`; **[D8-5]** portal URL byte-equals the live endpoint.
 

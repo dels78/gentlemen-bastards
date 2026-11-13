@@ -3,7 +3,7 @@
 # Secrets are ${VAR} refs only, resolved in this profile's own scope.
 # Portal include phase(s): construction; names are
 # the portal's prefixed served names (<server id>_<tool>).
-# model: strong tier: model id pinned from live evidence (da-03-claude-oauth-note.md, HTTP 200 on the subscription route, 2026-11-08). context_length is carried from the cheap tier and is UNVERIFIED pending the Stage-0 subscription catalog read (728-D U1).
+# model: strong tier: U1 SETTLED (2026-11-13) — the subscription plugin catalog (NousResearch/hermes-official-plugins @ 83f0a89, claude-subscription-directsdk/model_catalog.py) pins claude-sonnet-5-5 to context window 1_000_000; provider claude-subscription-directsdk-experimental, context_length 1000000.
 model:
   provider: claude-subscription-directsdk-experimental
   default: claude-sonnet-5-5
