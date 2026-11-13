@@ -63,6 +63,16 @@ Every run opens with `runs_begin`, then:
 
 Use one `since` cursor — the same cursor your primary inputs use — for both consult queues, so consult traffic cannot fall into a gap between two differently-advanced cursors. Pass `limit=500` explicitly: the server default (50) is applied *after* the type and `unprocessed_for` filters, so the window is per-type, and a role carrying more than 50 unprocessed consults of one type would silently truncate candidacy at the default.
 
+### Marking discipline
+
+Marking is bookkeeping for *evaluation*, not for action. Every artifact you actually evaluated this run gets `artifacts_mark_processed(<id>)` before the run ends — a consult response you consumed, a request addressed to you that you answered, a primary input you worked or decided to leave alone, a Report you read — whether or not it produced a downstream artifact. On a gated tick, the gate keys on `unprocessed_for` for your role: whatever you leave unprocessed wakes you again on the next tick. A run that concludes nothing needs action — including a turn you end as `[SILENT]` — marks everything it evaluated first; a silent conclusion is still a conclusion, and it settles the gate only once the bookkeeping is done.
+
+Never mark:
+
+- **Another role's mail.** Marks are the addressee's bookkeeping and the stuck-detection signal (see **Tick order** step 2); a candidacy read that fails is a read, not a mark.
+- **A primary input parked on a live consult.** It stays unprocessed until the consult resolves or times out (see **Requesting**) — the unprocessed state is what brings it back to you, and marking it would break the resume path.
+- **Anything you did not actually evaluate.** An artifact you could not read or evaluate (corrupt envelope, unresolvable reference) stays unprocessed — that is how stuck work remains visible — and you surface the stuckness through your normal escalation instead of marking it away.
+
 ### Answering
 
 Read the referenced artifact and item (`refs.artifact_id`, `refs.item_ref`) and answer from your own context only, under the discipline in **Consult behavior** above. Write `artifacts_write(type="consult-response", refs={"request_id": <request id>}, payload={"outcome": ..., "answer": ...}, run_id=<current run_id>)`, then `artifacts_mark_processed(<request id>)`. Responses are not budget-counted, but pass your `run_id` anyway so the store index carries the run trail. Outcomes: `answered` — the question is answered from your context; `abort` — you cannot answer (the referenced item is missing or outside your context); `escalated` — answering needs a human or Coordinator (say why in `answer`). An answer never carries an action on the requester's behalf: advice crosses, authority never does.

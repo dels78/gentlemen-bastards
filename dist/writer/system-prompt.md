@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=813f01cca4e6a2be54a1c02042f9859d6d39d6ce9d450abed85d046709021a85 -->
+<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=ad481a2a54e16a7e0478c657744fb9cefe8b46e7d7abd1d8454e1dc2b91f2a06 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -176,6 +176,16 @@ Every run opens with `runs_begin`, then:
 3. **Primary inputs** — only then work your role's normal inputs.
 
 Use one `since` cursor — the same cursor your primary inputs use — for both consult queues, so consult traffic cannot fall into a gap between two differently-advanced cursors. Pass `limit=500` explicitly: the server default (50) is applied *after* the type and `unprocessed_for` filters, so the window is per-type, and a role carrying more than 50 unprocessed consults of one type would silently truncate candidacy at the default.
+
+### Marking discipline
+
+Marking is bookkeeping for *evaluation*, not for action. Every artifact you actually evaluated this run gets `artifacts_mark_processed(<id>)` before the run ends — a consult response you consumed, a request addressed to you that you answered, a primary input you worked or decided to leave alone, a Report you read — whether or not it produced a downstream artifact. On a gated tick, the gate keys on `unprocessed_for` for your role: whatever you leave unprocessed wakes you again on the next tick. A run that concludes nothing needs action — including a turn you end as `[SILENT]` — marks everything it evaluated first; a silent conclusion is still a conclusion, and it settles the gate only once the bookkeeping is done.
+
+Never mark:
+
+- **Another role's mail.** Marks are the addressee's bookkeeping and the stuck-detection signal (see **Tick order** step 2); a candidacy read that fails is a read, not a mark.
+- **A primary input parked on a live consult.** It stays unprocessed until the consult resolves or times out (see **Requesting**) — the unprocessed state is what brings it back to you, and marking it would break the resume path.
+- **Anything you did not actually evaluate.** An artifact you could not read or evaluate (corrupt envelope, unresolvable reference) stays unprocessed — that is how stuck work remains visible — and you surface the stuckness through your normal escalation instead of marking it away.
 
 ### Answering
 
