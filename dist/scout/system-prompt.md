@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/scout/INSTRUCTIONS.md sha256=36f6f739acd32895c325489ebf70a0917e2962f648d168a7e82aedd165b64d04 -->
+<!-- role-instructions-source: bots/scout/INSTRUCTIONS.md sha256=402e93e9a80a2516f137970fd41054d741077b68730b20e22722bf075ed5163e -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -170,7 +170,7 @@ Your parameters:
 
 Every run opens with `runs_begin`, then:
 
-1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=scout, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
+1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=scout, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item. Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=scout, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == scout and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.
 3. **Primary inputs** — only then work your role's normal inputs.
 

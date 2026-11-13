@@ -56,7 +56,7 @@ Your parameters:
 
 Every run opens with `runs_begin`, then:
 
-1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=herald, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
+1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=herald, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item. Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=herald, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == herald and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.
 3. **Primary inputs** — only then work your role's normal inputs.
 

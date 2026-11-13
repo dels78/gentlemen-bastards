@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=29a5959756abe922ec5a3aa6913e9e9a0c70b79b400ab4f45093833b89b8be4f -->
+<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=f2f14d014875ac07e603c6fc2db5dcd20b8e9a6cd96234306046953f28089cac -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -170,7 +170,7 @@ Your parameters:
 
 Every run opens with `runs_begin`, then:
 
-1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=herald, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
+1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=herald, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item. Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=herald, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == herald and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.
 3. **Primary inputs** — only then work your role's normal inputs.
 

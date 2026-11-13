@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=da377494a7a488c0ea011d2bad19daf1ebf89fd180a4fe89ae1c30924b7b2101 -->
+<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=813f01cca4e6a2be54a1c02042f9859d6d39d6ce9d450abed85d046709021a85 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -183,7 +183,7 @@ Read the referenced artifact and item (`refs.artifact_id`, `refs.item_ref`) and 
 
 ### Requesting
 
-One request per item: `artifacts_write(type="consult-request", refs={"artifact_id": ..., "item_ref": ...}, payload={"question": ..., "responder": <a role in your may-consult list>}, run_id=<current run_id>)`. The store refuses a request whose responder is outside your may-consult list, refuses a budgeted role's request sent without its `run_id`, and refuses past your per-run budget. After writing, the item is **parked**: do not mark the primary input processed, emit no downstream artifact for that item this run, and record `request_id -> item` in your run's finish record — that mapping is the resume pointer (profile state is the fallback if the finish record is ambiguous). If the store refuses a request because the budget is exhausted, record the item as failed in your Receipt with `needs_question: true` (per **Consult behavior** above — Coordinator promotes it to a Question); that Receipt mechanism is this role's parking path for consult exhaustion and timeout alike, not a second path beside it and continue the run.
+One request per item: `artifacts_write(type="consult-request", refs={"artifact_id": ..., "item_ref": ...}, payload={"question": ..., "responder": <a role in your may-consult list>}, run_id=<current run_id>)`. The store refuses a request whose responder is outside your may-consult list, refuses a budgeted role's request sent without its `run_id`, and refuses past your per-run budget. After writing, the item is **parked**: do not mark the primary input processed, emit no downstream artifact for that item this run, and record `request_id -> item` in your run's finish record — that mapping is the resume pointer (profile state is the fallback if the finish record is ambiguous). If the store refuses a request because the budget is exhausted, record the item as failed in your Receipt with `needs_question: true` and continue the run (per **Consult behavior** above — Coordinator promotes it to a Question). That Receipt mechanism is this role's parking path for consult exhaustion and timeout alike — the single path, not a second one beside this block.
 
 ### Resuming
 
