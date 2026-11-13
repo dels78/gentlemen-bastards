@@ -1,0 +1,43 @@
+{
+  "_comment": "728-E/F Package 2 read-back for Cloudflare MCP portal `librarian` (account D3LS). Non-secret build input: no token values. Source: loop-architecture 728ef-build.md section 1 + 728ef-librarian.out (portal GET + token-authenticated tools/list, 2026-11-13). Served names are `<server id>_<catalog name>` (include-matching.md section 3). bots/validate.py checks every librarian-portal include name against `servers.*.enabled_served`.",
+  "portal_id": "librarian",
+  "hostname": "librarian.delisle.me",
+  "endpoint": "https://librarian.delisle.me/mcp",
+  "endpoint_source": "Portal GET returns hostname only (no endpoint field); endpoint = https://<hostname>/mcp, proven by token-authenticated initialize + tools/list against it (battery item 4, 2026-11-13).",
+  "read_at": "2026-11-13",
+  "phase": "construction",
+  "servers": {
+    "linear": {
+      "on_behalf": false,
+      "authentication_status": "connected",
+      "catalog_total": 78,
+      "enabled_catalog": [
+        "list_issues",
+        "get_issue"
+      ],
+      "enabled_served": [
+        "linear_list_issues",
+        "linear_get_issue"
+      ],
+      "served_names_live_verified": true
+    }
+  },
+  "tools_list_capture": {
+    "captured_at": "2026-11-13",
+    "identity": "service token hermes-librarian",
+    "names": [
+      "linear_get_issue",
+      "linear_list_issues",
+      "portal_list_servers",
+      "portal_toggle_servers",
+      "portal_toggle_single_server"
+    ],
+    "management_tools": [
+      "portal_list_servers",
+      "portal_toggle_servers",
+      "portal_toggle_single_server"
+    ],
+    "status": "complete",
+    "pending": null
+  }
+}

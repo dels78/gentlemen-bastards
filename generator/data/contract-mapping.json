@@ -1,0 +1,36 @@
+{
+  "_comment": "728-F contract -> real-tool mapping (specs/728-EF.md D7). Per role: the same real name on two portals is two different server entries. `contract: null` = no contract verb (read-back or plan-authorized row; `basis` says which). `tool` is the CATALOG name; the served (include) name is `<server>_<tool>` for portal rows (see portal-readback/*.json). A tool named by a role's active phase set (role-configs.json) must have a row here, otherwise generate.py refuses to render it: that is gate (ii) of D6. `read_back_only: true` rows are verify-after-write surfaces and must never be classified write-capable (D8 item 3).",
+  "portal_rows": [
+    {"contract": "linear.issue.create", "role": "writer", "tool": "save_issue", "server": "linear", "server_entry": "writer-portal", "kind": "write", "read_back_only": false, "basis": "D3/D7: contract create + update fold onto one tool (plan A1)"},
+    {"contract": "linear.issue.update", "role": "writer", "tool": "save_issue", "server": "linear", "server_entry": "writer-portal", "kind": "write", "read_back_only": false, "basis": "D3/D7: contract create + update fold onto one tool (plan A1)"},
+    {"contract": null, "role": "writer", "tool": "save_comment", "server": "linear", "server_entry": "writer-portal", "kind": "write", "read_back_only": false, "basis": "D7: no contract verb; plan 728-E row authorizes it"},
+    {"contract": "linear.get_issue", "role": "writer", "tool": "get_issue", "server": "linear", "server_entry": "writer-portal", "kind": "read", "read_back_only": true, "basis": "D7; writer read_back_only verification surface (D8 item 3)"},
+    {"contract": null, "role": "writer", "tool": "list_issues", "server": "linear", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: plan Writer section assigns Linear get/list for read-back to the portal"},
+    {"contract": null, "role": "writer", "tool": "list_comments", "server": "linear", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: save_comment verification surface (D3/U8)"},
+    {"contract": null, "role": "writer", "tool": "list_issue_statuses", "server": "linear", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: grounds save_issue status values in real statuses (D3)"},
+    {"contract": "gmail.read_email", "role": "writer", "tool": "get_message", "server": "gmail", "server_entry": "writer-portal", "kind": "read", "read_back_only": true, "basis": "D7; writer read_back_only verification surface (D8 item 3)"},
+    {"contract": "gmail.read_email", "role": "writer", "tool": "get_thread", "server": "gmail", "server_entry": "writer-portal", "kind": "read", "read_back_only": true, "basis": "D7 (+ get_thread for thread/label state); D8 item 3"},
+    {"contract": null, "role": "writer", "tool": "search_threads", "server": "gmail", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: locate surface for gmail.read_email (D3)"},
+    {"contract": null, "role": "writer", "tool": "list_labels", "server": "gmail", "server_entry": "writer-portal", "kind": "read", "read_back_only": true, "basis": "D7 read-back row: label-state verification against real label names (D3); read_back_only per the 728-E/F Package 3 build brief"},
+    {"contract": null, "role": "writer", "tool": "list_drafts", "server": "gmail", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: create_draft read-back pair (D3)"},
+    {"contract": null, "role": "writer", "tool": "get_draft", "server": "gmail", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: create_draft read-back pair (D3)"},
+    {"contract": null, "role": "writer", "tool": "list_events", "server": "google-calendar", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: D3 construction read set, Calendar"},
+    {"contract": null, "role": "writer", "tool": "get_event", "server": "google-calendar", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: D3 construction read set, Calendar"},
+    {"contract": null, "role": "writer", "tool": "list_calendars", "server": "google-calendar", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: D3 construction read set, Calendar"},
+    {"contract": null, "role": "writer", "tool": "search_events", "server": "google-calendar", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: D3 construction read set, Calendar"},
+    {"contract": null, "role": "writer", "tool": "suggest_time", "server": "google-calendar", "server_entry": "writer-portal", "kind": "read", "read_back_only": false, "basis": "D7 read-back row: D3 construction read set, Calendar"},
+    {"contract": "linear.get_issue", "role": "librarian", "tool": "get_issue", "server": "linear", "server_entry": "librarian-portal", "kind": "read", "read_back_only": false, "basis": "D7 / D5 (A8 narrowing)"},
+    {"contract": "linear.list_issues", "role": "librarian", "tool": "list_issues", "server": "linear", "server_entry": "librarian-portal", "kind": "read", "read_back_only": false, "basis": "D7 / D5 (A8 narrowing)"}
+  ],
+  "personal_mcp_rows": [
+    {"contract": "gmail.apply", "role": "writer", "tools": "group:gmail", "server_entry": "personal-mcp", "basis": "D7: unchanged, personal-mcp gmail_* names (email send stays on IMAP, fact (b))"}
+  ],
+  "explicitly_unmapped": [
+    {"role": "writer", "server": "linear", "tools": ["save_document"], "reason": "D7/§5 item 2: no contract verb; needs a contract amendment first"},
+    {"role": "writer", "server": "google-calendar", "tools": ["create_event", "update_event", "delete_event", "respond_to_event"], "reason": "D7/§5 item 2: no contract Calendar verb; needs a contract amendment first"},
+    {"role": "writer", "server": "gmail", "tools": ["create_draft", "label_thread", "unlabel_thread", "label_message", "unlabel_message", "update_message_labels", "trash_thread", "untrash_thread", "trash_message", "untrash_message"], "reason": "D7/§5 item 1: portal Gmail writes stay unmapped until the Writer-gate re-cut plan amendment decides the per-action-class surface"}
+  ],
+  "absent_on_portal": [
+    {"server": "gmail", "tools": ["send_message", "reply", "forward"], "reason": "fact (b): these do not exist on the portal Gmail server; send stays on personal-mcp IMAP"}
+  ]
+}

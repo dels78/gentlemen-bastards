@@ -1,0 +1,64 @@
+{
+  "_comment": "Pinned per-role inputs for dist/<role>/config.yaml (specs/728-D.md D2 shape; specs/728-EF.md D6/D8). Only roles listed here get a generated config.yaml. Portal include = the union of `phases[p]` for p in `active_phases`, mapped through contract-mapping.json and prefixed to served names. A W-step is a data change here (+ the matching Cloudflare flip), never a code change. W1-W3 sets are recorded but NOT rendered until listed in active_phases.",
+  "personal_mcp": {
+    "url": "http://personal-mcp.personal-mcp.svc.cluster.local:80/mcp",
+    "source": "personal-mcp src/auth/tool_scopes.json @ cab7aaa (main, byte-identical when read 2026-11-13); live tools/list counts writer 18 / librarian 14 confirmed by the 728-C batch (mint-harvest-2026-11-10.md)",
+    "groups": {
+      "gmail": ["gmail_archive", "gmail_archive_batch", "gmail_mark_read", "gmail_mark_unread", "gmail_request_delete", "gmail_delete", "gmail_label", "gmail_remove_label", "gmail_request_send", "gmail_send"],
+      "artifacts": ["artifacts_write", "artifacts_read", "artifacts_list", "artifacts_mark_processed"],
+      "runs": ["runs_begin", "runs_finish", "runs_get", "runs_list"],
+      "brain_read": ["brain_status", "brain_scan", "brain_get", "brain_search", "brain_traverse"]
+    }
+  },
+  "roles": {
+    "writer": {
+      "model": {
+        "provider": "claude-subscription-directsdk-experimental",
+        "default": "claude-haiku-5-5",
+        "context_length": 1000000,
+        "note": null
+      },
+      "personal_mcp_allow": ["group:gmail", "group:artifacts", "group:runs"],
+      "portal": {
+        "entry": "writer-portal",
+        "readback": "portal-readback/writer.json",
+        "active_phases": ["construction"],
+        "phases": {
+          "construction": {
+            "linear": ["get_issue", "list_issues", "list_comments", "list_issue_statuses"],
+            "gmail": ["get_message", "get_thread", "search_threads", "list_labels", "list_drafts", "get_draft"],
+            "google-calendar": ["list_events", "get_event", "list_calendars", "search_events", "suggest_time"]
+          },
+          "W1": {
+            "linear": ["save_issue", "save_comment"]
+          },
+          "W2": {
+            "gmail": ["label_thread", "unlabel_thread", "label_message", "unlabel_message", "update_message_labels", "create_draft", "trash_thread", "untrash_thread", "trash_message", "untrash_message"]
+          },
+          "W3": {
+            "google-calendar": ["create_event", "update_event", "delete_event", "respond_to_event"]
+          }
+        }
+      }
+    },
+    "librarian": {
+      "model": {
+        "provider": "claude-subscription-directsdk-experimental",
+        "default": "claude-sonnet-5-5",
+        "context_length": 1000000,
+        "note": "strong tier: model id pinned from live evidence (da-03-claude-oauth-note.md, HTTP 200 on the subscription route, 2026-11-08). context_length is carried from the cheap tier and is UNVERIFIED pending the Stage-0 subscription catalog read (728-D U1)."
+      },
+      "personal_mcp_allow": ["group:artifacts", "group:runs", "group:brain_read", "brain_apply_gated"],
+      "portal": {
+        "entry": "librarian-portal",
+        "readback": "portal-readback/librarian.json",
+        "active_phases": ["construction"],
+        "phases": {
+          "construction": {
+            "linear": ["list_issues", "get_issue"]
+          }
+        }
+      }
+    }
+  }
+}
