@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import copy
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -14,6 +16,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 GENERATOR = REPO_ROOT / "generator" / "generate.py"
 BOTS_DIR = REPO_ROOT / "bots"
+DATA_DIR = REPO_ROOT / "generator" / "data"
+
+# bots/validate.py asserts bots/ holds only the six role dirs, so importing it
+# must not drop a __pycache__ there.
+sys.dont_write_bytecode = True
+_spec = importlib.util.spec_from_file_location("gb_validate", BOTS_DIR / "validate.py")
+validate = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(validate)
 
 FIXTURE_BEHAVIOR = """# Synthetic behavior fixture
 
@@ -38,7 +48,32 @@ ROLE_ARTIFACTS = (
 )
 
 
-def run_generate(bots: Path, behavior: Path, out: Path, check: bool = False) -> subprocess.CompletedProcess:
+WRITER_CONSTRUCTION_SERVED = [
+    "linear_get_issue",
+    "linear_list_issues",
+    "linear_list_comments",
+    "linear_list_issue_statuses",
+    "gmail_get_message",
+    "gmail_get_thread",
+    "gmail_search_threads",
+    "gmail_list_labels",
+    "gmail_list_drafts",
+    "gmail_get_draft",
+    "google-calendar_list_events",
+    "google-calendar_get_event",
+    "google-calendar_list_calendars",
+    "google-calendar_search_events",
+    "google-calendar_suggest_time",
+]
+
+
+def run_generate(
+    bots: Path,
+    behavior: Path,
+    out: Path,
+    check: bool = False,
+    data: Path | None = None,
+) -> subprocess.CompletedProcess:
     cmd = [
         sys.executable,
         str(GENERATOR),
@@ -49,9 +84,25 @@ def run_generate(bots: Path, behavior: Path, out: Path, check: bool = False) -> 
         "--out",
         str(out),
     ]
+    if data is not None:
+        cmd += ["--data", str(data)]
     if check:
         cmd.append("--check")
     return subprocess.run(cmd, capture_output=True, text=True, cwd=REPO_ROOT)
+
+
+def load_config(out: Path, role: str) -> dict:
+    return validate.parse_config_yaml((out / role / "config.yaml").read_text())
+
+
+def check_map(results: list[tuple[str, bool, str]]) -> dict[str, bool]:
+    """Index validate_role_config results by D8 tag (or full name if untagged)."""
+    out: dict[str, bool] = {}
+    for name, ok, _ in results:
+        tag = name.split(": ", 1)[1]
+        key = tag.split("]", 1)[0] + "]" if tag.startswith("[") else tag
+        out[key] = ok
+    return out
 
 
 def tree_bytes(root: Path) -> dict[str, bytes]:
@@ -148,12 +199,188 @@ class GenerateTest(unittest.TestCase):
             inst_idx = prompt.index(instructions.strip())
             self.assertLess(beh_idx, inst_idx)
 
+    def test_config_yaml_only_for_portal_roles(self) -> None:
+        run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
+        for role in EXPECTED_ROLES:
+            has = (self.out_dir / role / "config.yaml").is_file()
+            self.assertEqual(has, role in ("writer", "librarian"), role)
+
+    def test_rendered_includes_exact(self) -> None:
+        run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
+        writer = load_config(self.out_dir, "writer")
+        self.assertEqual(
+            writer["mcp_servers"]["writer-portal"]["tools"]["include"],
+            WRITER_CONSTRUCTION_SERVED,
+        )
+        self.assertEqual(len(writer["mcp_servers"]["personal-mcp"]["tools"]["include"]), 18)
+        librarian = load_config(self.out_dir, "librarian")
+        self.assertEqual(
+            librarian["mcp_servers"]["librarian-portal"]["tools"]["include"],
+            ["linear_list_issues", "linear_get_issue"],
+        )
+        pm = librarian["mcp_servers"]["personal-mcp"]["tools"]["include"]
+        self.assertEqual(len(pm), 14)
+        self.assertIn("brain_apply_gated", pm)
+        self.assertEqual(librarian["model"]["default"], "claude-sonnet-5-5")
+
+    def test_renders_match_committed_dist(self) -> None:
+        # Full --check is blocked by pre-existing system-prompt/manifest drift
+        # from PR #16; pin the files this generator change owns byte-for-byte.
+        run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
+        for rel in ("writer/config.yaml", "librarian/config.yaml", "writer/tools.json"):
+            self.assertEqual(
+                (self.out_dir / rel).read_bytes(),
+                (REPO_ROOT / "dist" / rel).read_bytes(),
+                rel,
+            )
+
+    def test_w1_phase_is_data_only(self) -> None:
+        data = self._data_copy()
+        cfg = json.loads((data / "role-configs.json").read_text())
+        cfg["roles"]["writer"]["portal"]["active_phases"] = ["construction", "W1"]
+        (data / "role-configs.json").write_text(json.dumps(cfg))
+        result = run_generate(BOTS_DIR, self.behavior_path, self.out_dir, data=data)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        tools = json.loads((self.out_dir / "writer" / "tools.json").read_text())
+        self.assertEqual(
+            tools["portal"]["write_capable"], ["linear_save_issue", "linear_save_comment"]
+        )
+        # Validator still refuses it until the portal read-back records the flip.
+        results = self._validate(self.out_dir, data, "writer")
+        self.assertFalse(results["[D8-1]"])
+        self.assertTrue(results["[D8-3]"])
+
+    def test_unmapped_phase_refused_by_generator(self) -> None:
+        # W2 portal Gmail writes have no D7 rows (§5 item 1) -> gate (ii) closed.
+        data = self._data_copy()
+        cfg = json.loads((data / "role-configs.json").read_text())
+        cfg["roles"]["writer"]["portal"]["active_phases"] = ["construction", "W2"]
+        (data / "role-configs.json").write_text(json.dumps(cfg))
+        result = run_generate(BOTS_DIR, self.behavior_path, self.out_dir, data=data)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no contract-mapping row", result.stderr)
+
+    def _data_copy(self) -> Path:
+        data = Path(self._tmpdir) / "data"
+        shutil.copytree(DATA_DIR, data)
+        return data
+
+    def _validate(self, dist: Path, data: Path, role: str) -> dict[str, bool]:
+        role_data = json.loads((data / "role-configs.json").read_text())
+        mapping = json.loads((data / "contract-mapping.json").read_text())
+        role_cfg = role_data["roles"][role]
+        readback = json.loads((data / role_cfg["portal"]["readback"]).read_text())
+        config = validate.parse_config_yaml((dist / role / "config.yaml").read_text())
+        tools_json = json.loads((dist / role / "tools.json").read_text())
+        return check_map(validate.validate_role_config(
+            role, config, role_cfg, role_data["personal_mcp"], mapping, readback, tools_json
+        ))
+
     def test_determinism_two_runs(self) -> None:
         out_a = Path(self._tmpdir) / "dist_a"
         out_b = Path(self._tmpdir) / "dist_b"
         self.assertEqual(run_generate(BOTS_DIR, self.behavior_path, out_a).returncode, 0)
         self.assertEqual(run_generate(BOTS_DIR, self.behavior_path, out_b).returncode, 0)
         self.assertEqual(tree_bytes(out_a), tree_bytes(out_b))
+
+
+class ValidateRoleConfigTest(unittest.TestCase):
+    """728-E/F D8 validator checks against the committed renders, incl. negatives."""
+
+    def setUp(self) -> None:
+        self.role_data = json.loads((DATA_DIR / "role-configs.json").read_text())
+        self.mapping = json.loads((DATA_DIR / "contract-mapping.json").read_text())
+
+    def _inputs(self, role: str) -> dict:
+        role_cfg = self.role_data["roles"][role]
+        return {
+            "role": role,
+            "config": load_config(REPO_ROOT / "dist", role),
+            "role_cfg": role_cfg,
+            "personal_mcp": self.role_data["personal_mcp"],
+            "mapping": self.mapping,
+            "readback": json.loads((DATA_DIR / role_cfg["portal"]["readback"]).read_text()),
+            "tools_json": json.loads((REPO_ROOT / "dist" / role / "tools.json").read_text()),
+        }
+
+    def _run(self, inputs: dict) -> dict[str, bool]:
+        return check_map(validate.validate_role_config(**inputs))
+
+    def _portal_include(self, inputs: dict) -> list:
+        entry = inputs["role_cfg"]["portal"]["entry"]
+        return inputs["config"]["mcp_servers"][entry]["tools"]["include"]
+
+    def test_committed_renders_pass(self) -> None:
+        for role in ("writer", "librarian"):
+            results = self._run(self._inputs(role))
+            self.assertTrue(all(results.values()), (role, results))
+
+    def test_validate_script_exits_zero(self) -> None:
+        result = subprocess.run(
+            [sys.executable, "-B", str(BOTS_DIR / "validate.py")],
+            capture_output=True, text=True, cwd=REPO_ROOT,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout)
+
+    def test_w1_name_in_construction_render_fails(self) -> None:
+        for name in ("linear_save_issue", "save_comment"):
+            inputs = self._inputs("writer")
+            self._portal_include(inputs).append(name)
+            results = self._run(inputs)
+            self.assertFalse(results["[D8-3]"], name)
+
+    def test_w2_w3_and_unmapped_names_fail(self) -> None:
+        for name in ("gmail_label_thread", "create_draft", "google-calendar_create_event",
+                     "linear_save_document", "gmail_send_message"):
+            inputs = self._inputs("writer")
+            self._portal_include(inputs).append(name)
+            self.assertFalse(self._run(inputs)["[D8-3]"], name)
+
+    def test_dotted_name_fails(self) -> None:
+        for server in ("personal-mcp", "writer-portal"):
+            inputs = self._inputs("writer")
+            inputs["config"]["mcp_servers"][server]["tools"]["include"].append("linear.issue.create")
+            self.assertFalse(self._run(inputs)["[D8-2]"], server)
+
+    def test_name_not_in_readback_fails(self) -> None:
+        inputs = self._inputs("librarian")
+        self._portal_include(inputs).append("linear_whoami")
+        self.assertFalse(self._run(inputs)["[D8-1]"])
+        inputs = self._inputs("writer")
+        self._portal_include(inputs)[0] = "get_issue"  # unprefixed catalog name
+        self.assertFalse(self._run(inputs)["[D8-1]"])
+
+    def test_read_back_only_must_survive(self) -> None:
+        inputs = self._inputs("writer")
+        tp = inputs["tools_json"]["portal"]
+        tp["write_capable"] = list(tp["read_back_only"])
+        self.assertFalse(self._run(inputs)["[D8-4]"])
+        inputs = self._inputs("writer")
+        inputs["tools_json"]["portal"]["read_back_only"] = ["linear_get_issue"]
+        self.assertFalse(self._run(inputs)["[D8-4]"])
+
+    def test_portal_url_must_match_live(self) -> None:
+        for bad in ("https://scout.delisle.me/mcp", "https://writer.delisle.me/",
+                    "https://writer.delisle.me/mcp/"):
+            inputs = self._inputs("writer")
+            inputs["config"]["mcp_servers"]["writer-portal"]["url"] = bad
+            self.assertFalse(self._run(inputs)["[D8-5]"], bad)
+
+    def test_headers_must_be_own_role_refs(self) -> None:
+        name = "headers are own-role ${VAR} refs only"
+        for key, val in (
+            ("CF-Access-Client-Secret", "literal-secret-value"),
+            ("CF-Access-Client-Id", "${CF_ACCESS_CLIENT_ID_SCOUT}"),
+        ):
+            inputs = self._inputs("writer")
+            inputs["config"]["mcp_servers"]["writer-portal"]["headers"][key] = val
+            self.assertFalse(self._run(inputs)[name], val)
+
+    def test_inputs_not_mutated_across_cases(self) -> None:
+        a = self._inputs("writer")
+        b = copy.deepcopy(a)
+        self._run(a)
+        self.assertEqual(a, b)
 
 
 if __name__ == "__main__":

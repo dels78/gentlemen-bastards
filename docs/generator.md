@@ -50,9 +50,10 @@ python3 -m unittest discover -s generator
 |------|----------|
 | `bundle.json` | `role`, `purpose`, `model_tier`, `consumes`, `produces`, `escalates_to` from `profile.json` |
 | `system-prompt.md` | HTML provenance headers (source paths + sha256), full `BEHAVIOR.md`, `---`, then `INSTRUCTIONS.md` |
-| `tools.json` | `{"allow": [...]}` from profile; **writer** also has `read_back_only` (see below) |
+| `tools.json` | `{"allow": [...]}` from profile; **writer** also has `read_back_only` and a `portal` block (see below) |
 | `schedule.json` | `profile.json` → `schedule` verbatim |
 | `budget.json` | `{"budget": ..., "consult": ...}` from profile |
+| `config.yaml` | writer + librarian only: Hermes profile config (see "Per-profile `config.yaml`") |
 
 Roles are emitted in sorted name order.
 
@@ -74,6 +75,28 @@ Expected mapping direction (validated later, not implemented in GB-04):
 - `bundle.json` + `budget.json` + `schedule.json` → Hermes profile config
 - `tools.json` / `gateway-allowlists.json` → per-server MCP tool include lists (enforced again at personal-mcp)
 - Framework memory → disabled; brain access via personal-mcp `brain_*` tools (mbrain) under dotai's access pattern
+
+## Per-profile `config.yaml` (728-F; 728-D D2 shape)
+
+For every role listed in `generator/data/role-configs.json` (today: **writer**, **librarian**) the generator also emits `dist/<role>/config.yaml` — the Hermes profile user layer: `model` block + `personal-mcp` entry + the role's Cloudflare portal entry (`writer-portal` / `librarian-portal`). Scout's `dist/scout/config.yaml` is still hand-authored (728-D prerequisite) and not generated.
+
+Inputs under `generator/data/` (all non-secret):
+
+| File | Contents |
+|------|----------|
+| `contract-mapping.json` | The 728-E/F D7 contract→real-tool table, per role and server entry (`read_back_only` + `kind` per row), plus the explicit negative assertions (`explicitly_unmapped`, `absent_on_portal`). |
+| `role-configs.json` | Per role: model tier values, personal-mcp scope (`group:` refs expanded like personal-mcp's `tool_scopes.json`), portal entry, the phase sets (`construction`, `W1`, `W2`, `W3`) and the pinned `active_phases`. |
+| `portal-readback/<role>.json` | The portal's creation/enablement read-back: endpoint, per-server enabled tools in catalog **and** served (`<server id>_<tool>`) form, and the token-authenticated `tools/list` capture. |
+
+Rules the generator enforces:
+
+- Portal include = union of the active phases' tools, rendered as **served names** (`linear_get_issue`, `google-calendar_list_events` — hyphen kept); Hermes matches includes by exact string against served names.
+- Every tool in an active phase must have a D7 row for that role + server entry, or generation fails (D6 gate ii). Moving to W1 is a one-line `active_phases` change; W2/W3 additionally need their D7 rows (contract/plan amendments first).
+- Secrets are `${VAR}` refs only: `${MCP_SERVICE_TOKEN_<ROLE>}`, `${CF_ACCESS_CLIENT_ID_<ROLE>}`, `${CF_ACCESS_CLIENT_SECRET_<ROLE>}`.
+
+Writer's `tools.json` gains a `portal` block (`include`, `read_back_only`, `write_capable` in served names) so the read-back-only classification survives at the real-name level (D8 item 3).
+
+`bots/validate.py` checks each rendered config: D2 shape and own-role `${VAR}` headers; **[D8-1]** portal includes ⊆ the committed read-back's enabled served names; **[D8-2]** no dotted contract names in any include (all `dist/*/config.yaml`); **[D8-3]** no inactive-phase (W1/W2/W3), unmapped, or absent-on-portal name in any include, prefixed or not; **[D8-4]** writer `read_back_only` present in `tools.json` and disjoint from `write_capable`; **[D8-5]** portal URL byte-equals the live endpoint.
 
 ## Writer `read_back_only`
 
