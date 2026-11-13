@@ -1,0 +1,74 @@
+# 728-D: Scout's per-profile config (D2 shape). Hand-authored first
+# instance per specs/728-D.md §3 — the 728-F generator adopts this file
+# later; until then `generator/generate.py --check` flags it as an
+# extra dist file, which is the documented adoption path, not drift.
+#
+# This is the profile's user layer: Hermes expands ${VAR} refs in
+# Scout's own secret scope (populated by the gateway env-writer from
+# the hermes-managed-env Secret) before the managed overlay merges on
+# top. No literals, no placeholders for secret values — refs only.
+#
+# Portal entry: Roll #2 (homeops PR #3777) replaced the CF-Access
+# service-token headers with Hermes managed OAuth (auth: oauth), so
+# this entry carries today's live overlay entry unchanged — url,
+# auth, timeouts, and the 24 portal-enabled tool names read live from
+# Cloudflare 2026-11-10 (Linear 13, Gmail 6, Calendar 5). The entry
+# name stays `cloudflare-portal`: Scout's seeded cron records pin
+# that toolset name.
+model:
+  provider: claude-subscription-directsdk-experimental
+  default: claude-haiku-5-5
+  context_length: 1000000
+mcp_servers:
+  personal-mcp:
+    enabled: true
+    url: "http://personal-mcp.personal-mcp.svc.cluster.local:80/mcp"
+    headers:
+      Authorization: "Bearer ${MCP_SERVICE_TOKEN_HERMES}"
+    connect_timeout: 30
+    timeout: 300
+    tools:
+      # Exactly the five 728-K names — content fixed by 728-K D2,
+      # carried unchanged from the managed overlay into this file.
+      include:
+        - artifacts_write
+        - artifacts_read
+        - artifacts_list
+        - runs_begin
+        - runs_finish
+      resources: false
+      prompts: false
+  cloudflare-portal:
+    enabled: true
+    url: "https://scout.delisle.me/mcp"
+    auth: oauth
+    connect_timeout: 30
+    timeout: 300
+    tools:
+      include:
+        - linear_list_cycles
+        - linear_get_document
+        - linear_list_documents
+        - linear_get_issue
+        - linear_list_issues
+        - linear_list_issue_statuses
+        - linear_list_projects
+        - linear_get_project
+        - linear_list_milestones
+        - linear_list_teams
+        - linear_get_team
+        - linear_get_workspace
+        - linear_whoami
+        - gmail_list_drafts
+        - gmail_get_draft
+        - gmail_get_thread
+        - gmail_get_message
+        - gmail_search_threads
+        - gmail_list_labels
+        - google-calendar_list_events
+        - google-calendar_get_event
+        - google-calendar_list_calendars
+        - google-calendar_suggest_time
+        - google-calendar_search_events
+      resources: false
+      prompts: false
