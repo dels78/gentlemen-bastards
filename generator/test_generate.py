@@ -48,22 +48,31 @@ ROLE_ARTIFACTS = (
 )
 
 
-WRITER_CONSTRUCTION_SERVED = [
+# G2 (2026-11-17): construction + W1 — the portal include is exactly the
+# 7 Linear names. The 11 Google read names no longer render here; they
+# moved to Writer's personal-mcp include (see test_rendered_includes_exact).
+WRITER_W1_SERVED = [
     "linear_get_issue",
     "linear_list_issues",
     "linear_list_comments",
     "linear_list_issue_statuses",
-    "gmail_get_message",
-    "gmail_get_thread",
-    "gmail_search_threads",
-    "gmail_list_labels",
-    "gmail_list_drafts",
-    "gmail_get_draft",
-    "google-calendar_list_events",
-    "google-calendar_get_event",
-    "google-calendar_list_calendars",
-    "google-calendar_search_events",
-    "google-calendar_suggest_time",
+    "linear_save_issue",
+    "linear_save_comment",
+    "linear_save_document",
+]
+
+WRITER_GOOGLE_READS_PERSONAL_MCP = [
+    "gmail_read_search_threads",
+    "gmail_read_get_thread",
+    "gmail_read_get_message",
+    "gmail_read_list_labels",
+    "gmail_read_list_drafts",
+    "gmail_read_get_draft",
+    "calendar_list_calendars",
+    "calendar_list_events",
+    "calendar_get_event",
+    "calendar_search_events",
+    "calendar_suggest_time",
 ]
 
 
@@ -218,12 +227,15 @@ class GenerateTest(unittest.TestCase):
         writer = load_config(self.out_dir, "writer")
         self.assertEqual(
             writer["mcp_servers"]["writer-portal"]["tools"]["include"],
-            WRITER_CONSTRUCTION_SERVED,
+            WRITER_W1_SERVED,
         )
         writer_pm = writer["mcp_servers"]["personal-mcp"]["tools"]["include"]
         # 728-D D5 step 3 SHADOW withholding: gmail_send + gmail_delete are
-        # excluded (server-side scope and include move together); 16 remain.
-        self.assertEqual(len(writer_pm), 16)
+        # excluded (server-side scope and include move together). G2
+        # (2026-11-17): the 11 Google reads (group:gmail_read + group:calendar,
+        # granted to sub=writer in personal-mcp tool_scopes.json) join the
+        # former 16, for 27 total.
+        self.assertEqual(len(writer_pm), 27)
         self.assertNotIn("gmail_send", writer_pm)
         self.assertNotIn("gmail_delete", writer_pm)
         self.assertEqual(
@@ -234,6 +246,7 @@ class GenerateTest(unittest.TestCase):
                 "gmail_remove_label", "gmail_request_send",
             ],
         )
+        self.assertEqual(writer_pm[16:], WRITER_GOOGLE_READS_PERSONAL_MCP)
         librarian = load_config(self.out_dir, "librarian")
         self.assertEqual(
             librarian["mcp_servers"]["librarian-portal"]["tools"]["include"],
@@ -320,6 +333,11 @@ class GenerateTest(unittest.TestCase):
             )
 
     def test_w1_phase_is_data_only(self) -> None:
+        # G2 (2026-11-17): W1 is now the committed active set (the C1
+        # Cloudflare flip landed and the read-back records it), so setting
+        # it in a scratch data copy renders the same write_capable set and
+        # the validator now ACCEPTS it — D8-1 passes because the three
+        # names sit in the read-back's enabled_*, not verified_disabled_*.
         data = self._data_copy()
         cfg = json.loads((data / "role-configs.json").read_text())
         cfg["roles"]["writer"]["portal"]["active_phases"] = ["construction", "W1"]
@@ -331,9 +349,8 @@ class GenerateTest(unittest.TestCase):
             tools["portal"]["write_capable"],
             ["linear_save_issue", "linear_save_comment", "linear_save_document"],
         )
-        # Validator still refuses it until the portal read-back records the flip.
         results = self._validate(self.out_dir, data, "writer")
-        self.assertFalse(results["[D8-1]"])
+        self.assertTrue(results["[D8-1]"])
         self.assertTrue(results["[D8-3]"])
 
     def test_w3_phase_is_data_only(self) -> None:
@@ -435,16 +452,19 @@ class ValidateRoleConfigTest(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stdout)
 
-    def test_w1_name_in_construction_render_fails(self) -> None:
-        for name in ("linear_save_issue", "save_comment"):
+    def test_w1_names_are_active_after_g2(self) -> None:
+        # G2 (2026-11-17): W1 flipped live (C1) and is in active_phases, so
+        # its names are no longer inactive-phase names — D8-3 accepts them
+        # (they were refused before the flip; see git history).
+        for name in ("linear_save_issue", "linear_save_comment", "linear_save_document"):
             inputs = self._inputs("writer")
             self._portal_include(inputs).append(name)
             results = self._run(inputs)
-            self.assertFalse(results["[D8-3]"], name)
+            self.assertTrue(results["[D8-3]"], name)
 
     def test_w2_w3_and_unmapped_names_fail(self) -> None:
         for name in ("gmail_label_thread", "create_draft", "google-calendar_create_event",
-                     "linear_save_document", "gmail_send_message"):
+                     "gmail_send_message"):
             inputs = self._inputs("writer")
             self._portal_include(inputs).append(name)
             self.assertFalse(self._run(inputs)["[D8-3]"], name)
@@ -469,7 +489,10 @@ class ValidateRoleConfigTest(unittest.TestCase):
         tp["write_capable"] = list(tp["read_back_only"])
         self.assertFalse(self._run(inputs)["[D8-4]"])
         inputs = self._inputs("writer")
-        inputs["tools_json"]["portal"]["read_back_only"] = ["linear_get_issue"]
+        # G2: the portal read_back_only set is exactly ["linear_get_issue"]
+        # (the gmail read-back names moved to personal-mcp), so dropping it
+        # to empty is the mutation that must fail D8-4.
+        inputs["tools_json"]["portal"]["read_back_only"] = []
         self.assertFalse(self._run(inputs)["[D8-4]"])
 
     def test_portal_url_must_match_live(self) -> None:

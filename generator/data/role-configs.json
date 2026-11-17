@@ -1,13 +1,15 @@
 {
-  "_comment": "Pinned per-role inputs for dist/<role>/config.yaml (specs/728-D.md D2 shape; specs/728-EF.md D6/D8). Only roles listed here get a generated config.yaml. Portal include = the union of `phases[p]` for p in `active_phases`, mapped through contract-mapping.json and prefixed to served names. A W-step is a data change here (+ the matching Cloudflare flip), never a code change. W1-W3 sets are recorded but NOT rendered until listed in active_phases. Roles without a `portal` key are personal-mcp-only: they render a single-server config.yaml (model + personal-mcp). `gate_wake_kinds` (728-D plan D3; 728-EF D10) renders dist/<role>/scripts/gate.py from generator/data/gate.py.tmpl — one shared logic, per-role wake-kind constants.",
+  "_comment": "Pinned per-role inputs for dist/<role>/config.yaml (specs/728-D.md D2 shape; specs/728-EF.md D6/D8). Only roles listed here get a generated config.yaml. Portal include = the union of `phases[p]` for p in `active_phases`, mapped through contract-mapping.json and prefixed to served names. A W-step is a data change here (+ the matching Cloudflare flip), never a code change. W1-W3 sets are recorded but NOT rendered until listed in active_phases. Roles without a `portal` key are personal-mcp-only: they render a single-server config.yaml (model + personal-mcp). `gate_wake_kinds` (728-D plan D3; 728-EF D10) renders dist/<role>/scripts/gate.py from generator/data/gate.py.tmpl — one shared logic, per-role wake-kind constants. G2 (2026-11-17): Writer advances to W1 (active_phases construction+W1, matching the C1 Cloudflare flip) and its Google reads move from the writer portal to personal-mcp — the portal construction set keeps only the Linear reads, and group:gmail_read + group:calendar join Writer's personal_mcp_allow; the portal's Google read-back mapping rows stay dormant in contract-mapping.json (rollback = restore the construction gmail/google-calendar sets + drop the two groups).",
   "personal_mcp": {
     "url": "http://personal-mcp.personal-mcp.svc.cluster.local:80/mcp",
-    "source": "personal-mcp src/auth/tool_scopes.json @ cab7aaa (main, byte-identical when read 2026-11-13); live tools/list counts writer 18 / librarian 14 confirmed by the 728-C batch (mint-harvest-2026-11-10.md)",
+    "source": "personal-mcp src/auth/tool_scopes.json @ cab7aaa (main, byte-identical when read 2026-11-13); live tools/list counts writer 18 / librarian 14 confirmed by the 728-C batch (mint-harvest-2026-11-10.md). Groups gmail_read + calendar added 2026-11-17 (G2) from personal-mcp main 0157538 src/auth/tool_scopes.json (groups gmail_read/calendar, verbatim, in file order): sub=writer is granted group:gmail_read + group:calendar server-side there, so Writer's scope total is 27.",
     "groups": {
       "gmail": ["gmail_archive", "gmail_archive_batch", "gmail_mark_read", "gmail_mark_unread", "gmail_request_delete", "gmail_delete", "gmail_label", "gmail_remove_label", "gmail_request_send", "gmail_send"],
       "artifacts": ["artifacts_write", "artifacts_read", "artifacts_list", "artifacts_mark_processed"],
       "runs": ["runs_begin", "runs_finish", "runs_get", "runs_list"],
-      "brain_read": ["brain_status", "brain_scan", "brain_get", "brain_search", "brain_traverse"]
+      "brain_read": ["brain_status", "brain_scan", "brain_get", "brain_search", "brain_traverse"],
+      "gmail_read": ["gmail_read_search_threads", "gmail_read_get_thread", "gmail_read_get_message", "gmail_read_list_labels", "gmail_read_list_drafts", "gmail_read_get_draft"],
+      "calendar": ["calendar_list_calendars", "calendar_list_events", "calendar_get_event", "calendar_search_events", "calendar_suggest_time"]
     }
   },
   "roles": {
@@ -18,18 +20,16 @@
         "context_length": 1000000,
         "note": null
       },
-      "personal_mcp_allow": ["gmail_archive", "gmail_archive_batch", "gmail_mark_read", "gmail_mark_unread", "gmail_request_delete", "gmail_label", "gmail_remove_label", "gmail_request_send", "group:artifacts", "group:runs"],
-      "personal_mcp_note": "SHADOW withholding (728-D D5 step 3): gmail_send and gmail_delete are withheld — sub=writer loses both server-side in personal-mcp src/auth/tool_scopes.json, and this include list matches (include ⊆ scope is a hard battery rule). This replaces the former group:gmail expansion (10 names) with the explicit 8-name list. Restore is a paired change: re-add gmail_send + gmail_delete here AND restore them to writer's server-side scope in the same change set; never one side alone.",
+      "personal_mcp_allow": ["gmail_archive", "gmail_archive_batch", "gmail_mark_read", "gmail_mark_unread", "gmail_request_delete", "gmail_label", "gmail_remove_label", "gmail_request_send", "group:artifacts", "group:runs", "group:gmail_read", "group:calendar"],
+      "personal_mcp_note": "SHADOW withholding (728-D D5 step 3): gmail_send and gmail_delete are withheld — sub=writer loses both server-side in personal-mcp src/auth/tool_scopes.json, and this include list matches (include ⊆ scope is a hard battery rule). This replaces the former group:gmail expansion (10 names) with the explicit 8-name list. Restore is a paired change: re-add gmail_send + gmail_delete here AND restore them to writer's server-side scope in the same change set; never one side alone. Google reads (G2, 2026-11-17): group:gmail_read (6) + group:calendar (5) join the allow — personal-mcp already grants both to sub=writer server-side (tool_scopes.json @ 0157538), so the rendered include is 27 names (16 + 11) and still excludes gmail_send/gmail_delete; these reads replace the writer portal's gmail/google-calendar read names, mirroring Scout's direct-Google-legs move (gb PR #22).",
       "gate_wake_kinds": ["plan", "consult-request", "consult-response", "report"],
       "portal": {
         "entry": "writer-portal",
         "readback": "portal-readback/writer.json",
-        "active_phases": ["construction"],
+        "active_phases": ["construction", "W1"],
         "phases": {
           "construction": {
-            "linear": ["get_issue", "list_issues", "list_comments", "list_issue_statuses"],
-            "gmail": ["get_message", "get_thread", "search_threads", "list_labels", "list_drafts", "get_draft"],
-            "google-calendar": ["list_events", "get_event", "list_calendars", "search_events", "suggest_time"]
+            "linear": ["get_issue", "list_issues", "list_comments", "list_issue_statuses"]
           },
           "W1": {
             "linear": ["save_issue", "save_comment", "save_document"]

@@ -5,7 +5,7 @@
   "endpoint": "https://writer.delisle.me/mcp",
   "endpoint_source": "Portal GET returns hostname only (no endpoint field); endpoint = https://<hostname>/mcp, proven by token-authenticated initialize + tools/list against it (battery item 4, 2026-11-13).",
   "read_at": "2026-11-13",
-  "phase": "construction",
+  "phase": "W1",
   "servers": {
     "linear": {
       "on_behalf": false,
@@ -15,20 +15,22 @@
         "get_issue",
         "list_issues",
         "list_comments",
-        "list_issue_statuses"
+        "list_issue_statuses",
+        "save_issue",
+        "save_comment",
+        "save_document"
       ],
       "enabled_served": [
         "linear_get_issue",
         "linear_list_issues",
         "linear_list_comments",
-        "linear_list_issue_statuses"
-      ],
-      "verified_disabled_catalog": [
-        "save_document"
-      ],
-      "verified_disabled_served": [
+        "linear_list_issue_statuses",
+        "linear_save_issue",
+        "linear_save_comment",
         "linear_save_document"
       ],
+      "verified_disabled_catalog": [],
+      "verified_disabled_served": [],
       "served_names_live_verified": true
     },
     "gmail": {
@@ -87,6 +89,7 @@
     }
   },
   "amendment_2026_11_17": "728-EF §5 item 2 contract amendment (G1): the five write names above were absent from this artifact; they are recorded as verified_disabled_* — present in the live catalogs but NOT enabled on the portal — so enabled_catalog/enabled_served (the validator's D8-1 source, == the construction-phase enabled set) are intentionally unchanged. Provenance: Linear catalog of 78 incl. save_document (loop-architecture gmail-portal-catalog-live.md, save_document enabled: false) and Calendar catalog of 9 incl. create_event/update_event/delete_event/respond_to_event, all enabled: false (loop-architecture catalog-reread-2026-11-11.md; 728-EF D3 tables). A future W1/W3 flip PR moves a name from verified_disabled_* into enabled_* together with its Cloudflare portal flip.",
+  "amendment_2026_11_17_w1": "W1 portal flip (C1, 2026-11-17; G2): save_issue, save_comment and save_document move from disabled into linear enabled_catalog/enabled_served above, together with their Cloudflare portal flip — the move the G1 amendment anticipated. Evidence: loop-architecture writer-activation-c1-notes.md — PUT 2026-11-17T21:54:36Z on portal writer (linear server only; new modified_at 2026-11-17T21:54:40.014Z), independently read back in a fresh session: writer/linear enabled is exactly the 7 {get_issue, list_issues, list_comments, list_issue_statuses, save_issue, save_comment, save_document}, disabled 71 (the construction 74 minus exactly the three flipped names). Of the three, only save_document sat in verified_disabled_* (recorded by G1); save_issue/save_comment were in the C1 baseline's disabled set without a verified_disabled_* entry here — all three are now enabled_*, and linear verified_disabled_* is empty. The four google-calendar write names stay verified_disabled_* (W3 not flipped). The gmail and google-calendar servers are unchanged in this artifact (C1: attachments unchanged, reads only) — the portal still serves their reads; Writer's Google reads move to personal-mcp at the include level (role-configs.json / contract-mapping.json, G2), so those served names no longer render into the writer-portal include.",
   "tools_list_capture": {
     "captured_at": "2026-11-13",
     "identity": "service token hermes-writer",
