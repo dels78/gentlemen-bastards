@@ -328,9 +328,34 @@ class GenerateTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         tools = json.loads((self.out_dir / "writer" / "tools.json").read_text())
         self.assertEqual(
-            tools["portal"]["write_capable"], ["linear_save_issue", "linear_save_comment"]
+            tools["portal"]["write_capable"],
+            ["linear_save_issue", "linear_save_comment", "linear_save_document"],
         )
         # Validator still refuses it until the portal read-back records the flip.
+        results = self._validate(self.out_dir, data, "writer")
+        self.assertFalse(results["[D8-1]"])
+        self.assertTrue(results["[D8-3]"])
+
+    def test_w3_phase_is_data_only(self) -> None:
+        # 728-EF §5 item 2 contract amendment (G1): the calendar verbs now
+        # have D7 rows, so W3 renders instead of being refused by the
+        # generator — but only as a data change in a scratch copy.
+        data = self._data_copy()
+        cfg = json.loads((data / "role-configs.json").read_text())
+        cfg["roles"]["writer"]["portal"]["active_phases"] = ["construction", "W3"]
+        (data / "role-configs.json").write_text(json.dumps(cfg))
+        result = run_generate(BOTS_DIR, self.behavior_path, self.out_dir, data=data)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        tools = json.loads((self.out_dir / "writer" / "tools.json").read_text())
+        self.assertEqual(
+            tools["portal"]["write_capable"],
+            [
+                "google-calendar_create_event", "google-calendar_update_event",
+                "google-calendar_delete_event", "google-calendar_respond_to_event",
+            ],
+        )
+        # Validator still refuses it until the portal read-back records the
+        # flip (the amendment names sit in verified_disabled_*, not enabled_*).
         results = self._validate(self.out_dir, data, "writer")
         self.assertFalse(results["[D8-1]"])
         self.assertTrue(results["[D8-3]"])

@@ -23,6 +23,12 @@
         "linear_list_comments",
         "linear_list_issue_statuses"
       ],
+      "verified_disabled_catalog": [
+        "save_document"
+      ],
+      "verified_disabled_served": [
+        "linear_save_document"
+      ],
       "served_names_live_verified": true
     },
     "gmail": {
@@ -65,9 +71,22 @@
         "google-calendar_search_events",
         "google-calendar_suggest_time"
       ],
+      "verified_disabled_catalog": [
+        "create_event",
+        "update_event",
+        "delete_event",
+        "respond_to_event"
+      ],
+      "verified_disabled_served": [
+        "google-calendar_create_event",
+        "google-calendar_update_event",
+        "google-calendar_delete_event",
+        "google-calendar_respond_to_event"
+      ],
       "served_names_live_verified": false
     }
   },
+  "amendment_2026_11_17": "728-EF §5 item 2 contract amendment (G1): the five write names above were absent from this artifact; they are recorded as verified_disabled_* — present in the live catalogs but NOT enabled on the portal — so enabled_catalog/enabled_served (the validator's D8-1 source, == the construction-phase enabled set) are intentionally unchanged. Provenance: Linear catalog of 78 incl. save_document (loop-architecture gmail-portal-catalog-live.md, save_document enabled: false) and Calendar catalog of 9 incl. create_event/update_event/delete_event/respond_to_event, all enabled: false (loop-architecture catalog-reread-2026-11-11.md; 728-EF D3 tables). A future W1/W3 flip PR moves a name from verified_disabled_* into enabled_* together with its Cloudflare portal flip.",
   "tools_list_capture": {
     "captured_at": "2026-11-13",
     "identity": "service token hermes-writer",

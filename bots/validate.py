@@ -335,7 +335,9 @@ def check_write_tools(profiles: dict[str, dict]) -> list[bool]:
             if not any(marker in tool for marker in WRITE_MARKERS):
                 continue
             if role == "writer" and (
-                tool.startswith("gmail.") or tool.startswith("linear.")
+                tool.startswith("gmail.")
+                or tool.startswith("linear.")
+                or tool.startswith("calendar.")
             ):
                 continue
             if role == "coordinator" and tool.startswith("schedule."):
@@ -360,13 +362,17 @@ def check_writer_only_external_writes(profiles: dict[str, dict]) -> list[bool]:
         if role == "writer":
             continue
         for tool in prof["tools"]["allow"]:
-            if tool.startswith("gmail.") or tool.startswith("linear."):
+            if (
+                tool.startswith("gmail.")
+                or tool.startswith("linear.")
+                or tool.startswith("calendar.")
+            ):
                 if any(m in tool for m in WRITE_MARKERS):
                     ok = False
                     bad.append(f"{role}: {tool}")
     results.append(
         check(
-            "only Writer holds gmail./linear. write-capable tools",
+            "only Writer holds gmail./linear./calendar. write-capable tools",
             ok,
             "; ".join(bad),
         )

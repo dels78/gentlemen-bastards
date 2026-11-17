@@ -32,7 +32,7 @@
             "google-calendar": ["list_events", "get_event", "list_calendars", "search_events", "suggest_time"]
           },
           "W1": {
-            "linear": ["save_issue", "save_comment"]
+            "linear": ["save_issue", "save_comment", "save_document"]
           },
           "W2": {
             "gmail": ["label_thread", "unlabel_thread", "label_message", "unlabel_message", "update_message_labels", "create_draft", "trash_thread", "untrash_thread", "trash_message", "untrash_message"]

@@ -11,7 +11,13 @@
       "gmail.read_email",
       "linear.issue.create",
       "linear.issue.update",
-      "linear.get_issue"
+      "linear.document.create",
+      "linear.document.update",
+      "linear.get_issue",
+      "calendar.event.create",
+      "calendar.event.update",
+      "calendar.event.delete",
+      "calendar.event.respond"
     ]
   },
   "model_tier": "cheap",
