@@ -11,10 +11,18 @@
 # Portal entry: Roll #2 (homeops PR #3777) replaced the CF-Access
 # service-token headers with Hermes managed OAuth (auth: oauth), so
 # this entry carries today's live overlay entry unchanged — url,
-# auth, timeouts, and the 24 portal-enabled tool names read live from
+# auth, timeouts, and the portal-enabled tool names read live from
 # Cloudflare 2026-11-10 (Linear 13, Gmail 6, Calendar 5). The entry
 # name stays `cloudflare-portal`: Scout's seeded cron records pin
 # that toolset name.
+#
+# Direct Google legs P3 (2026-11-17): the include list below now
+# carries ONLY the 13 Linear names. The 11 Gmail/Calendar names
+# were removed from this include — Scout's Google reads moved to
+# personal-mcp's REST tools (see the personal-mcp entry). The
+# portal still serves the Google names and its mappings are left
+# untouched and dormant (spec D8): reverting this include is the
+# one-edit rollback.
 model:
   provider: claude-subscription-directsdk-experimental
   default: claude-haiku-5-5
@@ -28,14 +36,30 @@ mcp_servers:
     connect_timeout: 30
     timeout: 300
     tools:
-      # Exactly the five 728-K names — content fixed by 728-K D2,
-      # carried unchanged from the managed overlay into this file.
+      # The five 728-K names (content fixed by 728-K D2, carried
+      # unchanged from the managed overlay into this file) plus the
+      # eleven direct-Google-legs read names (spec D5): Gmail reads
+      # via the Gmail API and Calendar reads via the Calendar API,
+      # served by personal-mcp under the server-side grant (D2).
+      # These replace the portal's Gmail/Calendar names, which were
+      # DPP-gated on every data call.
       include:
         - artifacts_write
         - artifacts_read
         - artifacts_list
         - runs_begin
         - runs_finish
+        - gmail_read_search_threads
+        - gmail_read_get_thread
+        - gmail_read_get_message
+        - gmail_read_list_labels
+        - gmail_read_list_drafts
+        - gmail_read_get_draft
+        - calendar_list_calendars
+        - calendar_list_events
+        - calendar_get_event
+        - calendar_search_events
+        - calendar_suggest_time
       resources: false
       prompts: false
   cloudflare-portal:
@@ -59,16 +83,5 @@ mcp_servers:
         - linear_get_team
         - linear_get_workspace
         - linear_whoami
-        - gmail_list_drafts
-        - gmail_get_draft
-        - gmail_get_thread
-        - gmail_get_message
-        - gmail_search_threads
-        - gmail_list_labels
-        - google-calendar_list_events
-        - google-calendar_get_event
-        - google-calendar_list_calendars
-        - google-calendar_suggest_time
-        - google-calendar_search_events
       resources: false
       prompts: false
