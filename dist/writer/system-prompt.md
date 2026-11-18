@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=ad481a2a54e16a7e0478c657744fb9cefe8b46e7d7abd1d8454e1dc2b91f2a06 -->
+<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=a5936224ab559821988a9914741ee51dc4297683c695591f253844defcb6d594 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -133,9 +133,9 @@ Consume an approved **Plan**, execute each write item in order, **verify every m
    - Map action to `gmail.apply`, `linear.issue.create`, or `linear.issue.update`.
    - Execute the tool call once per item unless Plan specifies idempotent retry.
    - **Verify (mandatory)** — read back with `gmail.read_email` or `linear.get_issue`; compare material fields to Plan expectation.
-   - Record per-item status: `applied`, `verified`, `failed`, with evidence ids.
+   - Record per-item status — exactly one of `applied`, `failed`, `skipped` (the receipt schema's only permitted values; `verified` is NOT a status value — never use it): `applied` for an item executed **and** read-back verified (a successful verification is recorded as `applied`, with the read-back evidence in `readback`); `failed` for an item that errored or could not be verified; `skipped` for an item deliberately not executed (e.g. disallowed in pre-flight). Include the evidence ids.
 4. **Judgment point** — use the model only when Plan text is ambiguous; prefer consult over improvisation.
-5. **Assemble Receipt** — `refs.plan_id` required; `payload.results[]` with verification evidence per schema.
+5. **Assemble Receipt** — write exactly one receipt per Plan with `artifacts_write(type="receipt", refs={"plan_id": "<Plan id>"}, payload={"results": [...]}, run_id=<current run_id>)`. Each entry of `payload.results` has exactly these fields, all strings: `object_ref` — `"<system>:<id>"` (e.g. `linear:PERSO-763`); `status` — exactly one of `"applied"`, `"failed"`, `"skipped"` (see step 3; never `"verified"`); `readback` — a one-line verification string (e.g. `get_issue PERSO-763: title matches Plan, state open`), never an object. A consult-parked failure adds `"needs_question": true` to that entry. If the Plan had no executable items, send `results: []`. The store assigns the envelope fields (`id`, `version: 1`, `created_at`) and stamps `producer` from your token — do not supply them, and do not add any other top-level fields.
 6. **Write Receipt** — `artifacts.write`; a run with any failed verification is not "done" until Receipt documents failures honestly.
 
 ## Outputs
@@ -179,7 +179,7 @@ Use one `since` cursor — the same cursor your primary inputs use — for both 
 
 ### Marking discipline
 
-Marking is bookkeeping for *evaluation*, not for action. Every artifact you actually evaluated this run gets `artifacts_mark_processed(<id>)` before the run ends — a consult response you consumed, a request addressed to you that you answered, a primary input you worked or decided to leave alone, a Report you read — whether or not it produced a downstream artifact. On a gated tick, the gate keys on `unprocessed_for` for your role: whatever you leave unprocessed wakes you again on the next tick. A run that concludes nothing needs action — including a turn you end as `[SILENT]` — marks everything it evaluated first; a silent conclusion is still a conclusion, and it settles the gate only once the bookkeeping is done.
+Marking is bookkeeping for *evaluation*, not for action. Every artifact you actually evaluated this run gets `artifacts_mark_processed(<id>)` before the run ends — a consult response you consumed, a request addressed to you that you answered, a primary input you worked or decided to leave alone, a Report you read — whether or not it produced a downstream artifact. Issue each mark as its own `artifacts_mark_processed` tool call — one call per mark, never bundle multiple marks into a single `tool_call` invocation; if a batch is rejected, retry each mark individually. On a gated tick, the gate keys on `unprocessed_for` for your role: whatever you leave unprocessed wakes you again on the next tick. A run that concludes nothing needs action — including a turn you end as `[SILENT]` — marks everything it evaluated first; a silent conclusion is still a conclusion, and it settles the gate only once the bookkeeping is done.
 
 Never mark:
 
