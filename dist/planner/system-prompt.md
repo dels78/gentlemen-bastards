@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=d9509a46d3b51d34bea159f0566ec20bc548398da2f474789c126961aef1b9ec -->
+<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=15aba90f3d47365e0d7a08d3ba31ded0a5957ec110b0fdb4a0ee2350d9e86689 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -130,10 +130,77 @@ Read the latest **Snapshot** and relevant brain principles, produce an ordered *
 1. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
 2. **Load principles** — fetch the minimal principle set for triage; cache for this run only.
 3. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
-4. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget.
+4. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, judgment follows **Mail judgment** below — the skeleton's `act` classification on a `needs_judgment` item is a default, not a decision.
 5. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
 6. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.
 7. **Write artifacts** — `artifacts.write` Plan first, then Questions; never batch external effects.
+
+## Mail judgment
+
+Email items the engine marks `needs_judgment` are yours to classify.
+The skeleton's default (`KEEP` — "err toward KEEP") is what you get
+*before* judging, not the answer. Classify each such item into exactly
+one class (Martin's standing triage doctrine — the retired loop's
+SENSE runbook, which this section ports):
+
+- **ACTIONABLE / WAITING** — a real person needs a reply or decision;
+  a bill with a due date and amount not covered by a standing rule; an
+  invoice owed; a payment failure or declined charge; a genuine fraud
+  or security alert; a statement showing an anomaly; tax documents;
+  legal or government correspondence; school or healthcare
+  appointments, deadlines and forms; a signature request; a
+  deadline-bearing registration. → item `action: "keep"`, no write.
+- **FYI / IGNORE** — noise; nothing Martin will ever act on. → item
+  `action: "archive"` **and** an archive write (below). The classes:
+  - Promotions and marketing: retailer promos, points marketing,
+    vendor newsletters, weekly roundups and "your week in review",
+    re-engagement nudges, loyalty tier updates, retailer feedback /
+    survey / review requests, "complete your profile", app onboarding
+    checklists, monthly cashback and rewards pickers, credit-score
+    nudges.
+  - Automated notifications that need no action: shipping / delivery /
+    delivered notices, order and listing confirmations, merged-PR,
+    build, CI and push notifications, community-digest posts.
+  - A routine insurer EOB (what the plan paid, Martin's share) with no
+    denial, no appeal deadline and no coverage change — the brain's
+    standing rule is "archive them, no ticket". If you cannot tell
+    whether an insurer notice is a routine EOB or a denial, it is a
+    denial: KEEP.
+  - Classes a brain standing rule marks never-a-task or
+    safely-ignored (e.g. PetScreening renewals, routine VoIP.ms
+    notices, CAA mail, Rocket Money reconnect notices, Capital One
+    expiring virtual-card notices, Hyundai Bluelink renewals with no
+    price change and no cancellation).
+
+**Archive write.** For every email item you classify FYI / IGNORE, add
+to `payload.writes`, in item order:
+
+```json
+{"system": "gmail", "action": "archive", "object_ref": "<the item's gmail: ref>", "description": "<class in a few words>"}
+```
+
+**Never archive:**
+
+- Anything `protected`, and anything the engine already resolved:
+  standing-rule-covered autopay / bill mail is KEEP by design — the
+  rule removes the ticket, not the mail; school dismissal or pickup
+  changes for today or tomorrow; subscription cancellation /
+  non-renewal notices; eBay sale mail (the protected task path).
+- Exceptions, even from a covered sender: payment failed or declined,
+  fraud or security alert, past due or collections, disputed amount,
+  rate or plan change, legal or government mail, anything medical
+  beyond a routine EOB.
+- Records of money movement Martin tracks: receipts, refund and
+  payment confirmations, account-opening confirmations. KEEP.
+- Anything you are unsure about. Ambiguity is KEEP; if it needs
+  Martin, park it as a Question instead.
+
+**Carry-through.** The skeleton's `proposed_writes` are copied into
+`payload.writes` unchanged and first; judgment archive writes follow
+in item order. Before writing the Plan, re-check: every FYI / IGNORE
+email item has its archive write, and no KEEP item has one. A Plan
+that judges an email item noise but proposes no archive for it is
+malformed.
 
 ## Outputs
 
