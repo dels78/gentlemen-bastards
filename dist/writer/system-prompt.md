@@ -1,5 +1,5 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=a5936224ab559821988a9914741ee51dc4297683c695591f253844defcb6d594 -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
+<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=5df9686a5695d5456449fb812ae8f0815c585a2703021d7c1bd930e25735884f -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -26,7 +26,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`, `decision`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -38,7 +38,7 @@ No free-form bot-to-bot chat. No side channels.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
 
-**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain. The Librarian's only apply path is the gated PR-opening tool (`brain_apply_gated` in personal-mcp), invoked only after Martin's approval has been recorded as a `decision` artifact; it opens a pull request in mbrain and never commits directly to `main`.
 
 ## 4. Separation of duty
 
@@ -67,6 +67,8 @@ Log every consult. Enforce a **per-run consult budget**. On budget exhaustion, *
 **Human decisions** are never peer-consulted and never taken by a bot.
 
 Escalate: **coordinator → Muse → the human**.
+
+The human's answers come back down the same path and are recorded by the **Coordinator** as `decision` artifacts. **No bot may mint or alter that record**; in particular, the bot that will act on a decision never records it.
 
 Record the human’s answers deliberately in the **brain**, the **code**, or **these instructions**—not only in chat.
 
@@ -127,7 +129,7 @@ Consume an approved **Plan**, execute each write item in order, **verify every m
 
 ## Working method
 
-1. **Load Plan** — verify lineage to Snapshot exists in the store (metadata check via artifacts only).
+1. **Load Plan** — before executing a Plan, list Plans for the same `refs.snapshot_id` (`artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`) and the receipts for those Plans. If any other Plan for that snapshot already has a receipt, write this Plan's receipt with every item `skipped` and readback `duplicate Plan for snapshot <id>; receipt <id> exists`, call no write tools, then `artifacts_mark_processed(<this Plan id>)`, then `runs_finish`. Otherwise verify lineage to Snapshot exists in the store (metadata check via artifacts only).
 2. **Pre-flight (deterministic)** — confirm each item's action is in your allowlist; skip or receipt-fail disallowed actions without calling tools.
 3. **For each item in order (deterministic shell)**:
    - Map action to `gmail.apply`, `linear.issue.create`, or `linear.issue.update`.
@@ -136,7 +138,7 @@ Consume an approved **Plan**, execute each write item in order, **verify every m
    - Record per-item status — exactly one of `applied`, `failed`, `skipped` (the receipt schema's only permitted values; `verified` is NOT a status value — never use it): `applied` for an item executed **and** read-back verified (a successful verification is recorded as `applied`, with the read-back evidence in `readback`); `failed` for an item that errored or could not be verified; `skipped` for an item deliberately not executed (e.g. disallowed in pre-flight). Include the evidence ids.
 4. **Judgment point** — use the model only when Plan text is ambiguous; prefer consult over improvisation.
 5. **Assemble Receipt** — write exactly one receipt per Plan with `artifacts_write(type="receipt", refs={"plan_id": "<Plan id>"}, payload={"results": [...]}, run_id=<current run_id>)`. Each entry of `payload.results` has exactly these fields, all strings: `object_ref` — `"<system>:<id>"` (e.g. `linear:PERSO-763`); `status` — exactly one of `"applied"`, `"failed"`, `"skipped"` (see step 3; never `"verified"`); `readback` — a one-line verification string (e.g. `get_issue PERSO-763: title matches Plan, state open`), never an object. A consult-parked failure adds `"needs_question": true` to that entry. If the Plan had no executable items, send `results: []`. The store assigns the envelope fields (`id`, `version: 1`, `created_at`) and stamps `producer` from your token — do not supply them, and do not add any other top-level fields.
-6. **Write Receipt** — `artifacts.write`; a run with any failed verification is not "done" until Receipt documents failures honestly.
+6. **Write Receipt** — write the Receipt, then immediately `artifacts_mark_processed(<Plan id>)`; a run with any failed verification is not "done" until Receipt documents failures honestly.
 
 ## Outputs
 
@@ -169,7 +171,7 @@ Your parameters:
 
 ### Tick order
 
-Every run opens with `runs_begin`, then:
+Every run opens with `runs_begin`, then works the steps below in order. Its last call is always `runs_finish` (status `completed` or `failed`), including no-op and aborted runs:
 
 1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=writer, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=writer, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == writer and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.
