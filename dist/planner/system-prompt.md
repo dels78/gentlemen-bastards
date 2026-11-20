@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
-<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=9b5dcc518936d6c860aa74d3ae1302ce0a846c05082035ad222a8bdbc7f505b0 -->
+<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=40424672478eaec624e967fb5639051e05cad3f5eff50436934d38d732d3c67f -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -129,7 +129,7 @@ Read each unprocessed **Snapshot** and relevant brain principles, produce an ord
 
 ## Working method
 
-1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. For each snapshot, oldest first: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
+1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. Sort the returned snapshots client-side by `created_at` ascending (oldest first); do not rely on the server's order. For each snapshot: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
 2. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
 3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
 4. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.

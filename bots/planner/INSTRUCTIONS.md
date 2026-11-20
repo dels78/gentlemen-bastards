@@ -13,7 +13,7 @@ Read each unprocessed **Snapshot** and relevant brain principles, produce an ord
 
 ## Working method
 
-1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. For each snapshot, oldest first: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
+1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. Sort the returned snapshots client-side by `created_at` ascending (oldest first); do not rely on the server's order. For each snapshot: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
 2. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
 3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
 4. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
