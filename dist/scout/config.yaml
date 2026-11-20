@@ -58,6 +58,10 @@ mcp_servers:
         - gmail_read_list_labels
         - gmail_read_list_drafts
         - gmail_read_get_draft
+        # GB-20: backlog selection server-side (oldest inbox mail not
+        # decided under head_sha). Granted to hermes-scout via
+        # group:gmail_backlog in personal-mcp tool_scopes.json.
+        - gmail_read_backlog
         - calendar_list_calendars
         - calendar_list_events
         - calendar_get_event
