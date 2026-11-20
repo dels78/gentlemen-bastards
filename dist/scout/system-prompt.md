@@ -1,5 +1,5 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/scout/INSTRUCTIONS.md sha256=274651c21cf631955da8e20c4e789aa259705b6d6730396eebfa3fb148799a2b -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
+<!-- role-instructions-source: bots/scout/INSTRUCTIONS.md sha256=c137a45ea51f5995015a6847acf85844ea504d41ea03734b7034e7bb3fac94a6 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -26,7 +26,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`, `decision`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -38,7 +38,7 @@ No free-form bot-to-bot chat. No side channels.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
 
-**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain. The Librarian's only apply path is the gated PR-opening tool (`brain_apply_gated` in personal-mcp), invoked only after Martin's approval has been recorded as a `decision` artifact; it opens a pull request in mbrain and never commits directly to `main`.
 
 ## 4. Separation of duty
 
@@ -67,6 +67,8 @@ Log every consult. Enforce a **per-run consult budget**. On budget exhaustion, *
 **Human decisions** are never peer-consulted and never taken by a bot.
 
 Escalate: **coordinator → Muse → the human**.
+
+The human's answers come back down the same path and are recorded by the **Coordinator** as `decision` artifacts. **No bot may mint or alter that record**; in particular, the bot that will act on a decision never records it.
 
 Record the human’s answers deliberately in the **brain**, the **code**, or **these instructions**—not only in chat.
 
@@ -127,8 +129,13 @@ On each scheduled run, gather current signals from Gmail, Linear, and Calendar, 
 
 ## Working method
 
-1. **Open the run** — note run id and time window (default: since last successful Snapshot, or the schedule window).
-2. **Gmail (deterministic)** — search and read threads in scope; extract sender, subject, labels, age, and a one-line summary per item.
+1. **Open the run** — note run id and time window (default: since last successful Snapshot, or the schedule window). The window start is `window_from`.
+2. **Gmail (deterministic)** — inbox only. The new-mail search is `in:inbox after:<window_from>`. Mail not in INBOX never enters a Snapshot.
+   - Call `brain_status` once. The current brain head is the returned `head_sha`.
+   - **New mail.** `gmail_read_search_threads(query="in:inbox after:<window_from>", max_results=50)` and follow `page_token` until it is absent. In that query, write `<window_from>` as `YYYY/MM/DD` (Gmail's `after:` / `before:` form). Expand each thread into its messages. A message is new mail when its `label_ids` include `INBOX` and its `internal_date` is after `window_from`.
+   - **Already decided.** A message is already decided under the current head when a Plan's brain head equals this `head_sha` and that Plan records the message id or the thread id. `artifacts_list(type="plan", limit=500)` returns index entries oldest-first, capped at 500, and each entry includes `refs` but not `payload`. When a page's count is 500, list again with `since` set to the last entry's `created_at` (`since` is inclusive, so skip ids already collected) until a page adds nothing new. Use `refs.brain_head` and `refs.decided` on the list entry. When `refs.brain_head` is absent, `artifacts_read` that Plan and use `payload.brain_head` and `payload.decided`. Match a message on `message_id`, `thread_id`, or a `gmail:` ref. Only a Plan whose brain head equals the current `head_sha` counts. When the head changes, Plans made under the previous head no longer match, and that inbox mail is eligible again.
+   - **Backlog.** `gmail_read_search_threads(query="in:inbox before:<window_from>", max_results=50)`, with `<window_from>` in the same `YYYY/MM/DD` form, and page until exhausted. Also treat messages from the new-mail query whose `internal_date` is before `window_from` as backlog candidates (Gmail's date operators are day-granular, so the exact instant is applied on `internal_date`). Keep messages whose `label_ids` include `INBOX`, that are not in the new-mail set, and that are not already decided under the current head. Sort by `internal_date` ascending and add at most 25 — the oldest. Set `"source": "backlog"` on those Snapshot items only.
+   - **Item fields.** For every email item set `ref` to `gmail:<message id>` and record sender, subject, `labels` (the message's `label_ids`), `thread_id`, age, and a one-line summary. `labels` includes `INBOX`. Do not store a full message body.
 3. **Linear (deterministic)** — list issues matching the triage filters; capture id, title, state, priority, and assignee.
 4. **Calendar (deterministic)** — list events in the lookahead window; capture start, title, attendees, and location or link.
 5. **Classification (deterministic)** — apply rule tables from dotai/personal-triage; tag each item with category and urgency flags.
