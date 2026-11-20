@@ -33,12 +33,18 @@ Fetch the current standing rules governing email disposition via
 `mbrain.brain.read` before judging any email item in a run
 (step 2). Judge only against the rule text fetched in this run.
 
-**Same-head skip.** Once per run, before judging mail, build the decided set. `artifacts_list(type="plan", limit=500)` returns index entries oldest-first, capped at 500, and each entry includes `refs` but not `payload`. When a page's count is 500, list again with `since` set to the last entry's `created_at` (`since` is inclusive, so skip ids already collected) until a page adds nothing new. A Plan counts when `refs.brain_head` equals this run's `head_sha`. When `refs.brain_head` is absent, `artifacts_read` that Plan and use `payload.brain_head` and `payload.decided`. For an email item whose message id or thread id appears on a counted Plan (`refs.decided` or `payload.decided`, matched on `message_id`, `thread_id`, or a `gmail:` ref), skip it: no action, no write, no Question, and do not append it to this Plan's `decided`. A `keep` already recorded under this head stays decided, and it does not spawn another Question. When the head changes, the item is eligible again.
+**Same-head skip.** Once per run, before judging mail, build the decided set. `artifacts_list(type="plan", limit=500)` returns index entries oldest-first, capped at 500, and each entry includes `refs` but not `payload`. When a page's count is 500, list again with `since` set to the last entry's `created_at` (`since` is inclusive, so skip ids already collected) until a page adds nothing new. A Plan counts when `refs.brain_head` equals this run's `head_sha`. When `refs.brain_head` is absent, `artifacts_read` that Plan and use `payload.brain_head` and `payload.decided`. A decided entry whose `recheck_after` is at or before this run's start does not count: what the item waited on may have changed, so judge it again. For an email item whose message id or thread id appears on a counted entry of a counted Plan (`refs.decided` or `payload.decided`, matched on `message_id`, `thread_id`, or a `gmail:` ref), skip it: no action, no write, no Question, and do not append it to this Plan's `decided`. A `keep` already recorded under this head stays decided, and it does not spawn another Question. When the head changes, the item is eligible again.
 
 For each email item the engine marks `needs_judgment` that the same-head skip did not take:
 
 - The skeleton's `act` classification is a default, not a
   decision. Judge the item against the fetched rule text.
+- Judge with everything the Snapshot item carries: sender,
+  subject, summary, labels, and `excerpt` when present. Scout
+  adds `excerpt` (the start of the body) for insurer and
+  statement mail, so a rule that turns on the content — an
+  insurer notice that is or is not a denial, a statement that
+  does or does not ask for a payment — is judged on that text.
 - If a fetched rule directs the item to the `"archive"` action:
   set the item's `action` to `"archive"` and append to
   `payload.writes`, in item order:
@@ -49,9 +55,21 @@ For each email item the engine marks `needs_judgment` that the same-head skip di
 
   The `description` cites the deciding rule's id, so a Receipt
   can be audited back to the brain rule that decided the item.
+- If the deciding rule also names a label for the item (for
+  example `Records/Finance`), append this write immediately
+  before the item's archive write:
+
+  ```json
+  {"system": "gmail", "action": "label", "object_ref": "<the item's gmail: ref>", "label": "<the label name>", "description": "<the deciding brain rule's id>"}
+  ```
+
+  The archive write is still added. A label is never a reason
+  to keep the item, and a failed label does not stop the
+  archive.
 - If a fetched rule protects the item, or directs it to the
   `"keep"` action: set the item's `action` to `"keep"`; add
-  no write.
+  no write. When the protection holds only until something
+  changes, record when to look again (`recheck_after`, below).
 - If no fetched rule covers the item: set the item's `action`
   to `"keep"`; add no write; and emit a **Question** for the
   item (step 5, with `refs.artifact_id` and `refs.item_ref`
@@ -68,14 +86,21 @@ For each email item the engine marks `needs_judgment` that the same-head skip di
 {"ref": "<the item's gmail: ref>", "message_id": "<message id>", "thread_id": "<thread id, or null>"}
 ```
 
-That list, together with the brain head on the Plan, is how a later run tells the message was decided under this head. A skipped item is not appended.
+Add `"recheck_after": "<ISO 8601 UTC instant>"` to the entry of a `keep` that waits on something expected to change:
+
+- The item waits for a task to exist (this Plan's writes create it, or the rule keeps the mail until a task is created): this run's start plus 2 hours.
+- The item waits for an open task to close: this run's start plus 24 hours.
+- The item waits for a date named in it to pass (an event, a deadline, a ship-by date): the first instant of the day after that date in America/New_York, written in UTC.
+
+A `keep` that waits on nothing gets no `recheck_after`; it stays decided until the brain head changes. That list, together with the brain head on the Plan, is how a later run tells the message was decided under this head. A skipped item is not appended.
 
 **Carry-through.** The skeleton's `proposed_writes` are copied
 into `payload.writes` unchanged and first; the `"archive"`
 writes decided above follow in item order. Before writing the
-Plan, re-check: every item set to `"archive"` has its write in
-`payload.writes`, and no item set to `"keep"` has one. A
-mismatch makes the Plan malformed.
+Plan, re-check: every item set to `"archive"` has its archive
+write in `payload.writes`, every `"label"` write is followed by
+that item's archive write, and no item set to `"keep"` has a
+write. A mismatch makes the Plan malformed.
 
 ## Outputs
 

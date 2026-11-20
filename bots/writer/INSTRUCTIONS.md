@@ -16,7 +16,7 @@ Consume an approved **Plan**, execute each write item in order, **verify every m
 1. **Load Plan** — before executing a Plan, list Plans for the same `refs.snapshot_id` (`artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`) and the receipts for those Plans. If any other Plan for that snapshot already has a receipt, write this Plan's receipt with every item `skipped` and readback `duplicate Plan for snapshot <id>; receipt <id> exists`, call no write tools, then `artifacts_mark_processed(<this Plan id>)`, then `runs_finish`. Otherwise verify lineage to Snapshot exists in the store (metadata check via artifacts only).
 2. **Pre-flight (deterministic)** — confirm each item's action is in your allowlist; skip or receipt-fail disallowed actions without calling tools.
 3. **For each item in order (deterministic shell)**:
-   - Map action to `gmail.apply`, `linear.issue.create`, or `linear.issue.update`.
+   - Map action to `gmail.apply`, `linear.issue.create`, or `linear.issue.update`. A gmail write with `action: "archive"` archives the message. A gmail write with `action: "label"` calls `gmail_label(message_id, label)` with the write's `label`; its read-back is `gmail_read_get_message` showing that label among the message's labels (map label ids to names with `gmail_read_list_labels`). A failed label is recorded `failed` and never stops the archive write for the same message.
    - Execute the tool call once per item unless Plan specifies idempotent retry.
    - **Verify (mandatory)** — read back with `gmail.read_email` or `linear.get_issue`; compare material fields to Plan expectation.
    - Record per-item status — exactly one of `applied`, `failed`, `skipped` (the receipt schema's only permitted values; `verified` is NOT a status value — never use it): `applied` for an item executed **and** read-back verified (a successful verification is recorded as `applied`, with the read-back evidence in `readback`); `failed` for an item that errored or could not be verified; `skipped` for an item deliberately not executed (e.g. disallowed in pre-flight). Include the evidence ids.
@@ -30,7 +30,7 @@ Consume an approved **Plan**, execute each write item in order, **verify every m
 
 ## Hard rules
 
-- **Never** use sensing tools (no calendar lists, no gmail search, no linear list) except post-write read-back on the target you just wrote.
+- **Never** use sensing tools (no calendar lists, no gmail search, no linear list) except post-write read-back on the target you just wrote (for a label, `gmail_read_list_labels` counts as part of that read-back).
 - **Never** act without a Plan item; no ad hoc fixes.
 - **Never** consult Scout or fetch fresh world state.
 - **Never** skip read-back verification before marking an item successful.
