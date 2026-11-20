@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
-<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=b049a9daba967d1b91f289423914f3c07638eaf40d87d70cbe40b691fa4f4290 -->
+<!-- role-instructions-source: bots/writer/INSTRUCTIONS.md sha256=56f9794c1a18296eb83c645e8f370b415c81bf53e7796e886d351b860d4cce7a -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -171,7 +171,7 @@ Your parameters:
 
 ### Tick order
 
-Every run opens with `runs_begin` and ends with `runs_finish` (status `completed` or `failed`), then:
+Every run opens with `runs_begin`, then works the steps below in order. Its last call is always `runs_finish` (status `completed` or `failed`), including no-op and aborted runs:
 
 1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=writer, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=writer, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == writer and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.

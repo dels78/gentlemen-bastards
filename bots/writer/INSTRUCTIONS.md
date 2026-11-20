@@ -55,7 +55,7 @@ Your parameters:
 
 ### Tick order
 
-Every run opens with `runs_begin` and ends with `runs_finish` (status `completed` or `failed`), then:
+Every run opens with `runs_begin`, then works the steps below in order. Its last call is always `runs_finish` (status `completed` or `failed`), including no-op and aborted runs:
 
 1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=writer, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=writer, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == writer and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.
