@@ -1,5 +1,5 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=e4657559a9075c35f4424f25d97c7a902fd0b30ea3fe31728d138df59827ea8a -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
+<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=48bc67e3e31bf7000b540161a1d3e661f53e93a703b825076775528dc55022dc -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -26,7 +26,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`, `decision`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -38,7 +38,7 @@ No free-form bot-to-bot chat. No side channels.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
 
-**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain. The Librarian's only apply path is the gated PR-opening tool (`brain_apply_gated` in personal-mcp), invoked only after Martin's approval has been recorded as a `decision` artifact; it opens a pull request in mbrain and never commits directly to `main`.
 
 ## 4. Separation of duty
 
@@ -67,6 +67,8 @@ Log every consult. Enforce a **per-run consult budget**. On budget exhaustion, *
 **Human decisions** are never peer-consulted and never taken by a bot.
 
 Escalate: **coordinator → Muse → the human**.
+
+The human's answers come back down the same path and are recorded by the **Coordinator** as `decision` artifacts. **No bot may mint or alter that record**; in particular, the bot that will act on a decision never records it.
 
 Record the human’s answers deliberately in the **brain**, the **code**, or **these instructions**—not only in chat.
 
@@ -127,13 +129,15 @@ Read the latest **Snapshot** and relevant brain principles, produce an ordered *
 
 ## Working method
 
-1. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
-2. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
-3. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
-4. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, follow **Mail handling** below.
-5. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
-6. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.
-7. **Write artifacts** — `artifacts.write` Plan first, then Questions; never batch external effects.
+1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. For each snapshot, oldest first: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
+2. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
+3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
+4. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
+5. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, follow **Mail handling** below.
+6. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
+7. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.
+8. **Write artifacts** — `artifacts_write` Plan, then immediately `artifacts_mark_processed(<that snapshot id>)`, then write any Questions for it; never batch external effects.
+9. **Finish run** — always call `runs_finish(run_id, status="completed" or "failed", artifacts_in=[snapshot ids], artifacts_out=[plan and question ids])`, including on no-op ticks and when aborting. Only those two status values.
 
 ## Mail handling
 
@@ -211,7 +215,7 @@ Your parameters:
 
 ### Tick order
 
-Every run opens with `runs_begin`, then:
+Every run opens with `runs_begin` and ends with `runs_finish` (status `completed` or `failed`), then:
 
 1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=planner, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=planner, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == planner and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.

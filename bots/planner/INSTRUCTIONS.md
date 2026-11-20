@@ -13,13 +13,15 @@ Read the latest **Snapshot** and relevant brain principles, produce an ordered *
 
 ## Working method
 
-1. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
-2. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
-3. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
-4. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, follow **Mail handling** below.
-5. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
-6. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.
-7. **Write artifacts** — `artifacts.write` Plan first, then Questions; never batch external effects.
+1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. For each snapshot, oldest first: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
+2. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
+3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
+4. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
+5. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, follow **Mail handling** below.
+6. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
+7. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.
+8. **Write artifacts** — `artifacts_write` Plan, then immediately `artifacts_mark_processed(<that snapshot id>)`, then write any Questions for it; never batch external effects.
+9. **Finish run** — always call `runs_finish(run_id, status="completed" or "failed", artifacts_in=[snapshot ids], artifacts_out=[plan and question ids])`, including on no-op ticks and when aborting. Only those two status values.
 
 ## Mail handling
 
@@ -97,7 +99,7 @@ Your parameters:
 
 ### Tick order
 
-Every run opens with `runs_begin`, then:
+Every run opens with `runs_begin` and ends with `runs_finish` (status `completed` or `failed`), then:
 
 1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=planner, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=planner, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == planner and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.

@@ -13,7 +13,7 @@ Consume an approved **Plan**, execute each write item in order, **verify every m
 
 ## Working method
 
-1. **Load Plan** — verify lineage to Snapshot exists in the store (metadata check via artifacts only).
+1. **Load Plan** — before executing a Plan, list Plans for the same `refs.snapshot_id` (`artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`) and the receipts for those Plans. If any other Plan for that snapshot already has a receipt, write this Plan's receipt with every item `skipped` and readback `duplicate Plan for snapshot <id>; receipt <id> exists`, call no write tools, and finish the run with `runs_finish`. Otherwise verify lineage to Snapshot exists in the store (metadata check via artifacts only).
 2. **Pre-flight (deterministic)** — confirm each item's action is in your allowlist; skip or receipt-fail disallowed actions without calling tools.
 3. **For each item in order (deterministic shell)**:
    - Map action to `gmail.apply`, `linear.issue.create`, or `linear.issue.update`.
@@ -55,7 +55,7 @@ Your parameters:
 
 ### Tick order
 
-Every run opens with `runs_begin`, then:
+Every run opens with `runs_begin` and ends with `runs_finish` (status `completed` or `failed`), then:
 
 1. **Responses to you** — `artifacts_list(type="consult-response", unprocessed_for=writer, since=<cursor>, limit=500)`. Read each one, match `refs.request_id` to a consult you parked, and resume that item (see **Resuming**). Mark each response processed after consuming it.
 2. **Requests addressed to you** — `artifacts_list(type="consult-request", unprocessed_for=writer, since=<cursor>, limit=500)`. List entries carry no payload, so read each candidate: the read that reveals `payload.responder` *is* the candidacy test. Keep only those with `payload.responder` == writer and answer them (see **Answering**). Never mark another role's mail — marks are the addressee's bookkeeping and the stuck-detection signal.
