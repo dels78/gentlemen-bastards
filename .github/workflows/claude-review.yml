@@ -96,3 +96,4 @@ jobs:
           python3 -c 'import json,sys; print(json.dumps({"body": open(sys.argv[1]).read()}))' "$BODY_FILE" > /tmp/review-payload.json
           curl -sS --fail -X POST -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "https://api.github.com/repos/$GITHUB_REPOSITORY/issues/$PR_NUMBER/comments" --data @/tmp/review-payload.json > /dev/null
           [ "$BODY_FILE" = "/tmp/review-comment.md" ]
+          bash "${GITHUB_WORKSPACE}/.github/claude/verdict_gate.sh" "$BODY_FILE"
