@@ -49,6 +49,9 @@ mcp_servers:
         - artifacts_list
         - runs_begin
         - runs_finish
+        # GB-18: current brain head (`head_sha`). hermes-scout is already
+        # granted brain_status server-side; this include makes the call visible.
+        - brain_status
         - gmail_read_search_threads
         - gmail_read_get_thread
         - gmail_read_get_message

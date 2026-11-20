@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
-<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=40424672478eaec624e967fb5639051e05cad3f5eff50436934d38d732d3c67f -->
+<!-- role-instructions-source: bots/planner/INSTRUCTIONS.md sha256=f7e3d24bb2717da50959f3ad3b493b9459085ebf3eff343e20aff51f3dc06ea3 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -131,11 +131,11 @@ Read each unprocessed **Snapshot** and relevant brain principles, produce an ord
 
 1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. Sort the returned snapshots client-side by `created_at` ascending (oldest first); do not rely on the server's order. For each snapshot: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
 2. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
-3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content.
+3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content. Call `brain_status` once this run. The current brain head is the returned `head_sha`. Every Plan this run records that value as `payload.brain_head` and as `refs.brain_head`.
 4. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
 5. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, follow **Mail handling** below.
 6. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
-7. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; ordered `payload.items[]` per schema.
+7. **Assemble Plan** — set `refs.snapshot_id` to exactly one Snapshot; set `payload.brain_head` and `refs.brain_head` to this run's `head_sha`; set `payload.decided` and `refs.decided` to the email decisions recorded below; ordered `payload.items[]` per schema. The `artifacts_write` `refs` object is what the index stores, so `brain_head` and `decided` go in `refs` as well as on the payload.
 8. **Write artifacts** — `artifacts_write` Plan, then immediately `artifacts_mark_processed(<that snapshot id>)`, then write any Questions for it; never batch external effects.
 9. **Finish run** — always call `runs_finish(run_id, status="completed" or "failed", artifacts_in=[snapshot ids], artifacts_out=[plan and question ids])`, including on no-op ticks and when aborting. Only those two status values.
 
@@ -149,7 +149,9 @@ Fetch the current standing rules governing email disposition via
 `mbrain.brain.read` before judging any email item in a run
 (step 2). Judge only against the rule text fetched in this run.
 
-For each email item the engine marks `needs_judgment`:
+**Same-head skip.** Once per run, before judging mail, build the decided set. `artifacts_list(type="plan", limit=500)` returns index entries oldest-first, capped at 500, and each entry includes `refs` but not `payload`. When a page's count is 500, list again with `since` set to the last entry's `created_at` (`since` is inclusive, so skip ids already collected) until a page adds nothing new. A Plan counts when `refs.brain_head` equals this run's `head_sha`. When `refs.brain_head` is absent, `artifacts_read` that Plan and use `payload.brain_head` and `payload.decided`. For an email item whose message id or thread id appears on a counted Plan (`refs.decided` or `payload.decided`, matched on `message_id`, `thread_id`, or a `gmail:` ref), skip it: no action, no write, no Question, and do not append it to this Plan's `decided`. A `keep` already recorded under this head stays decided, and it does not spawn another Question. When the head changes, the item is eligible again.
+
+For each email item the engine marks `needs_judgment` that the same-head skip did not take:
 
 - The skeleton's `act` classification is a default, not a
   decision. Judge the item against the fetched rule text.
@@ -175,6 +177,14 @@ For each email item the engine marks `needs_judgment`:
 - If fetched rules conflict, or coverage is genuinely unclear:
   set the item's `action` to `"keep"`; add no write. If the
   item needs Martin, emit a **Question** for it.
+
+**Record the decision.** For every email item this Plan gives an action (`archive` or `keep`, including a `keep` that also emits a Question), append one object to both `payload.decided` and `refs.decided`:
+
+```json
+{"ref": "<the item's gmail: ref>", "message_id": "<message id>", "thread_id": "<thread id, or null>"}
+```
+
+That list, together with the brain head on the Plan, is how a later run tells the message was decided under this head. A skipped item is not appended.
 
 **Carry-through.** The skeleton's `proposed_writes` are copied
 into `payload.writes` unchanged and first; the `"archive"`
