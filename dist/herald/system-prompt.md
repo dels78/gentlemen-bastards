@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
-<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=787d8f1f02e9012ea99d731b399af2bd99712b60106b4b337d71a8095b2625f3 -->
+<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=2e41b8c2c7d882f099ca948fc86900a5a2ae2e0d44b48ee0b7f0940160af9bc9 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -131,7 +131,7 @@ Turn **Receipts** and peer **Reports** into batched **Reports** for Martin's dig
 ## Working method
 
 1. **Define window** — use cron boundary (`0 7,19 * * *`); load all new Receipts and Reports in that window.
-2. **Loop health (deterministic)** — before composing the digest, run `scripts/loop_health.py` from this profile home (same pattern as the wake gate: read the JSON on stdout). If `status` is `degraded`, fold every `alerts[]` entry into the digest Report under a system-health section and set `payload.status: degraded` on the Report you write. Do not treat Hermes job success alone as a healthy loop: a green cron with `status: degraded` from `loop_health.py` still means the swarm is stuck (for example Coordinator idle while Questions wait). When `status` is `ok`, you may still cite `unprocessed_questions_for_coordinator` as a metric but do not downgrade the loop.
+2. **Loop health (deterministic)** — before composing the digest, run `scripts/loop_health.py` from this profile home (same pattern as the wake gate: read the **last** JSON line on stdout even when the script exits non-zero). If `status` is `degraded`, fold every `alerts[]` entry into the digest Report under a system-health section and set `payload.status: degraded` on the Report you write. Do not treat Hermes job success alone as a healthy loop: a green cron with `status: degraded` from `loop_health.py` still means the swarm is stuck (for example Coordinator idle while Questions wait). When `status` is `ok`, you may still cite `unprocessed_questions_for_coordinator` as a metric but do not downgrade the loop.
 3. **Deterministic aggregation** — group by domain (mail actions, Linear, system health); sort by urgency then time.
 4. **Urgency gate (deterministic)** — only items flagged `urgent` in source artifacts or matching dotai urgent rules may trigger realtime delivery.
 5. **Judgment point** — model may polish digest prose; must not invent facts not present in inputs.

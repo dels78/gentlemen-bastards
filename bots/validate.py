@@ -685,7 +685,30 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
             bad.append("in-cluster personal-mcp URL missing")
         if '"type": kind' not in text:
             bad.append("per-type artifacts_list wake queries missing")
+        if '"unprocessed_for": role, "limit": 500}' in text.replace(" ", ""):
+            bad.append("unfiltered limit=500 wake query still present")
         results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
+    herald_cfg = dist_dir / "herald" / "config.yaml"
+    herald_runs: list[str] = []
+    if herald_cfg.is_file():
+        try:
+            herald_config = parse_config_yaml(herald_cfg.read_text(encoding="utf-8"))
+            inc = (
+                herald_config.get("mcp_servers", {})
+                .get("personal-mcp", {})
+                .get("tools", {})
+                .get("include")
+                or []
+            )
+            if "runs_list" not in inc:
+                herald_runs.append("runs_list missing from herald personal-mcp include")
+        except ValueError as exc:
+            herald_runs.append(str(exc))
+    else:
+        herald_runs.append(str(herald_cfg))
+    results.append(
+        check("herald: config includes runs_list for loop_health", not herald_runs, "; ".join(herald_runs))
+    )
     loop_health = dist_dir / "herald" / "scripts" / "loop_health.py"
     lh_bad: list[str] = []
     if not loop_health.is_file():

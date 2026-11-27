@@ -80,14 +80,37 @@ def latest_coordinator_finished_at(runs: list) -> datetime | None:
     return best
 
 
+def oldest_question_created_at(questions: list) -> datetime | None:
+    best: datetime | None = None
+    for item in questions:
+        if not isinstance(item, dict):
+            continue
+        raw = item.get("created_at")
+        if not isinstance(raw, str) or not raw.strip():
+            continue
+        try:
+            created = parse_instant(raw)
+        except ValueError:
+            continue
+        if best is None or created < best:
+            best = created
+    return best
+
+
 def coordinator_stale(
     question_count: int,
     last_finished: datetime | None,
+    oldest_question_at: datetime | None,
     now: datetime,
 ) -> bool:
     if question_count <= 0:
         return False
     if last_finished is None:
+        return True
+    if (
+        oldest_question_at is not None
+        and last_finished < oldest_question_at
+    ):
         return True
     return (now - last_finished).total_seconds() > STALE_MINUTES * 60
 
@@ -113,10 +136,13 @@ def main() -> int:
     )
     question_count = len(questions)
 
-    runs = extract_runs(client.call_tool("runs_list", {"role": COORDINATOR, "limit": 20}))
+    runs = extract_runs(
+        client.call_tool("runs_list", {"role": COORDINATOR, "limit": 100})
+    )
     last_finished = latest_coordinator_finished_at(runs)
+    oldest_q = oldest_question_created_at(questions)
     now = datetime.now(timezone.utc)
-    stale = coordinator_stale(question_count, last_finished, now)
+    stale = coordinator_stale(question_count, last_finished, oldest_q, now)
     status = "degraded" if stale else "ok"
     body: dict = {
         "status": status,
@@ -142,5 +168,18 @@ if __name__ == "__main__":
     try:
         raise SystemExit(main())
     except Exception as error:
+        print(
+            json.dumps(
+                {
+                    "status": "degraded",
+                    "alerts": [
+                        {
+                            "code": "loop_health_error",
+                            "message": str(error),
+                        }
+                    ],
+                }
+            )
+        )
         print(f"loop_health error: {error}", file=sys.stderr)
         raise SystemExit(1)
