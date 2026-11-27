@@ -8,13 +8,20 @@ import io
 import json
 import sys
 import unittest
-import yaml
 from contextlib import redirect_stdout
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+
+_validate_spec = importlib.util.spec_from_file_location(
+    "gb_validate_perso816", REPO_ROOT / "bots" / "validate.py"
+)
+assert _validate_spec and _validate_spec.loader
+_validate = importlib.util.module_from_spec(_validate_spec)
+_validate_spec.loader.exec_module(_validate)
+parse_config_yaml = _validate.parse_config_yaml
 
 
 def load_module(path: Path, module_name: str):
@@ -497,7 +504,9 @@ class HeraldLoopHealthProfileTest(unittest.TestCase):
             LoopHealthScriptTest.setUpClass()
 
     def test_rendered_herald_config_exposes_loop_health_tools(self) -> None:
-        cfg = yaml.safe_load((REPO_ROOT / "dist/herald/config.yaml").read_text(encoding="utf-8"))
+        cfg = parse_config_yaml(
+            (REPO_ROOT / "dist/herald/config.yaml").read_text(encoding="utf-8")
+        )
         inc = cfg["mcp_servers"]["personal-mcp"]["tools"]["include"]
         self.assertIn("artifacts_list", inc)
         self.assertIn("runs_list", inc)
