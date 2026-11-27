@@ -338,6 +338,7 @@ class GenerateTest(unittest.TestCase):
             "planner/config.yaml", "herald/config.yaml", "coordinator/config.yaml",
             "coordinator/scripts/gate.py", "planner/scripts/gate.py",
             "writer/scripts/gate.py", "herald/scripts/gate.py",
+            "herald/scripts/loop_health.py",
             "librarian/scripts/gate.py",
         ):
             self.assertEqual(

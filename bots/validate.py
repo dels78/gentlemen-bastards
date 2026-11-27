@@ -736,7 +736,51 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
             bad.append("token var / wakeAgent output missing")
         if "personal-mcp.personal-mcp.svc.cluster.local" not in text:
             bad.append("in-cluster personal-mcp URL missing")
+        if '"type": kind' not in text:
+            bad.append("per-type artifacts_list wake queries missing")
+        if '"unprocessed_for": role, "limit": 500}' in text:
+            bad.append("unfiltered limit=500 wake query still present")
+        if '"limit": 1}' not in text:
+            bad.append("per-type wake queries must use limit=1")
         results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
+    herald_cfg = dist_dir / "herald" / "config.yaml"
+    herald_runs: list[str] = []
+    if herald_cfg.is_file():
+        try:
+            herald_config = parse_config_yaml(herald_cfg.read_text(encoding="utf-8"))
+            inc = (
+                herald_config.get("mcp_servers", {})
+                .get("personal-mcp", {})
+                .get("tools", {})
+                .get("include")
+                or []
+            )
+            for tool in ("artifacts_list", "runs_list"):
+                if tool not in inc:
+                    herald_runs.append(f"{tool} missing from herald personal-mcp include")
+        except ValueError as exc:
+            herald_runs.append(str(exc))
+    else:
+        herald_runs.append(str(herald_cfg))
+    results.append(
+        check("herald: config includes runs_list for loop_health", not herald_runs, "; ".join(herald_runs))
+    )
+    loop_health = dist_dir / "herald" / "scripts" / "loop_health.py"
+    lh_bad: list[str] = []
+    if not loop_health.is_file():
+        lh_bad.append(str(loop_health))
+    else:
+        lh_text = loop_health.read_text(encoding="utf-8")
+        try:
+            compile(lh_text, str(loop_health), "exec")
+        except SyntaxError as exc:
+            lh_bad.append(f"syntax: {exc}")
+        for needle in ("coordinator_stale", "runs_list", "unprocessed_questions_for_coordinator"):
+            if needle not in lh_text:
+                lh_bad.append(f"missing {needle!r}")
+    results.append(
+        check("herald: loop_health.py rendered", not lh_bad, "; ".join(lh_bad))
+    )
     return results
 
 

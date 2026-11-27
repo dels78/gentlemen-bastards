@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
-<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=a272f9069bad1b26d0f168e02275baf850aeac934c2a664fd56b2f36bcf67e99 -->
+<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=306e54c28bbd28bb7780f71e9c423251909032a8f8f705542e13439ce54063da -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -131,12 +131,13 @@ Turn **Receipts** and peer **Reports** into batched **Reports** for Martin's dig
 ## Working method
 
 1. **Define window** — use cron boundary (`0 7,19 * * *`); load all new Receipts and Reports in that window.
-2. **Deterministic aggregation** — group by domain (mail actions, Linear, system health); sort by urgency then time.
-3. **Urgency gate (deterministic)** — only items flagged `urgent` in source artifacts or matching dotai urgent rules may trigger realtime delivery.
-4. **Judgment point** — model may polish digest prose; must not invent facts not present in inputs.
-5. **Compose Report** — `payload.sections[]` per `protocol/schemas/report.schema.json`; include open Questions pointers by reference id only.
-6. **Batch publish** — write the digest **report** via artifacts store (delivery to Muse/UI is downstream of the artifact).
-7. **Urgent path** — for items passing the urgency gate, flag each in the Report's urgent section with a terse summary and its artifact ids; Muse delivers flagged items immediately (Herald holds no messaging surface in v1). Never spam per-event noise.
+2. **Loop health (deterministic)** — before composing the digest, run `scripts/loop_health.py` from this profile home via the same shell Hermes uses for `scripts/gate.py` (read the **last** JSON line on stdout even when the script exits non-zero). If the script is missing, cannot execute, or produces no parseable JSON, treat the loop as `degraded` and say so in the Report — do not assume healthy. If `status` is `degraded`, fold every `alerts[]` entry into the digest Report under a system-health section and set `payload.status: degraded` on the Report you write. Do not treat Hermes job success alone as a healthy loop: a green cron with `status: degraded` from `loop_health.py` still means the swarm is stuck (for example Coordinator idle while Questions wait). When `status` is `ok`, you may still cite `unprocessed_questions_for_coordinator` as a metric but do not downgrade the loop.
+3. **Deterministic aggregation** — group by domain (mail actions, Linear, system health); sort by urgency then time.
+4. **Urgency gate (deterministic)** — only items flagged `urgent` in source artifacts or matching dotai urgent rules may trigger realtime delivery.
+5. **Judgment point** — model may polish digest prose; must not invent facts not present in inputs.
+6. **Compose Report** — `payload.sections[]` per `protocol/schemas/report.schema.json`; include open Questions pointers by reference id only.
+7. **Batch publish** — write the digest **report** via artifacts store (delivery to Muse/UI is downstream of the artifact).
+8. **Urgent path** — for items passing the urgency gate, flag each in the Report's urgent section with a terse summary and its artifact ids; Muse delivers flagged items immediately (Herald holds no messaging surface in v1). Never spam per-event noise.
 
 ## Outputs
 
