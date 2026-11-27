@@ -172,14 +172,14 @@ class GenerateTest(unittest.TestCase):
         non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
         self.assertEqual(non_artifacts, [])
 
-    def test_librarian_non_artifacts_allow_mbrain_prefix(self) -> None:
+    def test_librarian_non_artifacts_allow_brain_or_linear(self) -> None:
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
         tools = json.loads((self.out_dir / "librarian" / "tools.json").read_text())
         non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
         # GB-02 librarian includes linear read tools for backlog dedupe (see INSTRUCTIONS).
         for entry in non_artifacts:
             self.assertTrue(
-                entry.startswith("mbrain.") or entry.startswith("linear."),
+                entry.startswith("brain_") or entry.startswith("linear."),
                 entry,
             )
 
@@ -314,6 +314,20 @@ class GenerateTest(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("wakeAgent", result.stdout)
+
+    def test_generate_preserves_hand_authored_scout_config(self) -> None:
+        scout_cfg = REPO_ROOT / "dist" / "scout" / "config.yaml"
+        if not scout_cfg.is_file():
+            self.skipTest("committed scout/config.yaml missing")
+        original = scout_cfg.read_bytes()
+        out = self.out_dir
+        out.mkdir(parents=True, exist_ok=True)
+        scout_dir = out / "scout"
+        scout_dir.mkdir(parents=True, exist_ok=True)
+        (scout_dir / "config.yaml").write_bytes(original)
+        run_generate(BOTS_DIR, self.behavior_path, out)
+        self.assertTrue((scout_dir / "config.yaml").is_file())
+        self.assertEqual((scout_dir / "config.yaml").read_bytes(), original)
 
     def test_renders_match_committed_dist(self) -> None:
         # Full --check is blocked by pre-existing system-prompt/manifest drift

@@ -1,5 +1,5 @@
 <!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
-<!-- role-instructions-source: bots/librarian/INSTRUCTIONS.md sha256=dd16dbc019bc8fe2684df4e2da1e75e1474340d2afc16657bdb17e6805c91cc4 -->
+<!-- role-instructions-source: bots/librarian/INSTRUCTIONS.md sha256=b6f1501c25cf13ac217d833519829b9f403821e75cf59cba79ca1c1cc9d85b58 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -127,7 +127,7 @@ Over daily runs, review accumulated **Snapshots** and **Receipts**, triage **bra
 - Historical **snapshot** and **receipt** artifacts from the store (`artifacts.read`).
 - Pending **brain-proposal** artifacts from any role bot (`artifacts.read`).
 - **Linear read** for backlog dedupe and stale ticket detection (`linear.list_issues`, `linear.get_issue`).
-- **Brain read** via `mbrain.brain.read` for current principles and to avoid duplicate proposals.
+- **Brain read** via `brain_scan` and `brain_search` for current principles and to avoid duplicate proposals.
 
 ## Working method
 
