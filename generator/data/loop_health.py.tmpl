@@ -7,10 +7,11 @@ do not edit the rendered copy under dist/.
 Prints one JSON object on stdout: loop status for the personal triage swarm.
 Reuses gate.py's MCP client from the same scripts/ directory on the profile.
 
-MCP contract (personal-mcp; mirrors bot INSTRUCTIONS.md list calls):
-- artifacts_list applies `type` and `unprocessed_for` before `limit`.
-- runs_list accepts `role` and returns `runs[]` with `role` and `finished_at`.
-  Herald's token includes `runs_list` and cross-role artifact reads for health.
+MCP contract (dels78/personal-mcp src/tools/artifacts.py ArtifactStore.list_*):
+- artifacts_list filters artifact_type and unprocessed_for before limit (see fixtures).
+- runs_list returns consolidated runs with role, status, finished_at (status completed on success).
+  Herald subject (tool_scopes.json) includes group:artifacts and group:runs.
+  Execution: docs/perso-816-loop-health.md (MCP_SERVICE_TOKEN_HERALD, same URL as gate.py).
 """
 
 from __future__ import annotations

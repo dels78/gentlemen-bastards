@@ -100,24 +100,11 @@ Writer's `tools.json` gains a `portal` block (`include`, `read_back_only`, `writ
 
 Writer's personal-mcp include is the explicit 8-name gmail list, not `group:gmail`: `gmail_send` and `gmail_delete` are SHADOW-withheld server-side for `sub=writer` (728-D D5 step 3), and the include must stay within the server-side scope. Restoring them is a paired change (role-configs.json + personal-mcp `tool_scopes.json` together).
 
-## GB-21 (PERSO-816): per-type gate wake and Herald loop health
-
-Spec id **GB-21** tracks PERSO-816 in Linear. It extends **728-EF D10** wake gates: each gate queries `artifacts_list` per wake kind so unrelated unprocessed artifacts cannot starve the Coordinator (or any gated role). Herald adds `loop_health.py` to flag a stale Coordinator when Questions wait.
-
 ## Gate scripts (`scripts/gate.py`; 728-D plan D3, 728-EF D10)
 
 For every role with `gate_wake_kinds` in `role-configs.json` the generator renders `dist/<role>/scripts/gate.py` from the shared template `generator/data/gate.py.tmpl` — one shared logic, per-role wake-kind constants. The fetch hook lays `dist/<role>/scripts/*` into `<profile home>/scripts/`, where Hermes' cron scheduler runs it as a pre-run gate: the last stdout line `{"wakeAgent": false}` skips the model run; any failure wakes (safe direction), so the script exits non-zero with no `wakeAgent` line on any error. The script derives its role from its home directory name, reads `MCP_SERVICE_TOKEN_<ROLE>` from `<home>/.env`, and for each wake kind makes `artifacts_list(type=<kind>, unprocessed_for=<role>, limit=1)` against the in-cluster personal-mcp server so unrelated unprocessed artifacts cannot starve the gate. Wake kinds per role live in `role-configs.json`; `bots/validate.py` checks each rendered gate carries exactly its kinds.
 
-Herald also gets `dist/herald/scripts/loop_health.py` from `generator/data/loop_health.py.tmpl` (PERSO-816): a deterministic JSON probe of Coordinator freshness versus unprocessed Questions. Herald instructions require folding a `degraded` result into the digest Report.
-
-Expected personal-mcp shapes (consumed from bot INSTRUCTIONS; verify against live payloads after deploy):
-
-```json
-{"artifacts": [{"type": "question", "created_at": "2026-11-27T18:00:00Z", "id": "..."}]}
-{"runs": [{"role": "coordinator", "status": "finished", "finished_at": "2026-11-27T19:05:00Z"}]}
-```
-
-Staleness: unprocessed Questions older than 60 minutes with no successful Coordinator `finished_at` at or after the oldest Question's `created_at`.
+Herald also gets `dist/herald/scripts/loop_health.py` from `generator/data/loop_health.py.tmpl` (Linear PERSO-816): a deterministic JSON probe of Coordinator freshness versus unprocessed Questions. Herald instructions require folding a `degraded` result into the digest Report. Execution contract: `docs/perso-816-loop-health.md`. personal-mcp response shapes: `generator/fixtures/personal_mcp_perso816_payloads.json` (from `dels78/personal-mcp` `src/tools/artifacts.py`).
 
 `bots/validate.py` checks each rendered config: D2 shape and own-role `${VAR}` headers; **[D8-1]** portal includes ⊆ the committed read-back's enabled served names; **[D8-2]** no dotted contract names in any include (all `dist/*/config.yaml`); **[D8-3]** no inactive-phase (W1/W2/W3), unmapped, or absent-on-portal name in any include, prefixed or not; **[D8-4]** writer `read_back_only` present in `tools.json` and disjoint from `write_capable`; **[D8-5]** portal URL byte-equals the live endpoint.
 

@@ -687,7 +687,7 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
             bad.append("per-type artifacts_list wake queries missing")
         if '"unprocessed_for": role, "limit": 500}' in text:
             bad.append("unfiltered limit=500 wake query still present")
-        if '"limit": 1' not in text:
+        if '"limit": 1}' not in text:
             bad.append("per-type wake queries must use limit=1")
         results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
     herald_cfg = dist_dir / "herald" / "config.yaml"
@@ -702,8 +702,9 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
                 .get("include")
                 or []
             )
-            if "runs_list" not in inc:
-                herald_runs.append("runs_list missing from herald personal-mcp include")
+            for tool in ("artifacts_list", "runs_list"):
+                if tool not in inc:
+                    herald_runs.append(f"{tool} missing from herald personal-mcp include")
         except ValueError as exc:
             herald_runs.append(str(exc))
     else:
