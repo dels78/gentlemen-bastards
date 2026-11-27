@@ -40,7 +40,9 @@ Exit `0` if identical; exit `1` with a short diff summary if not. Use this in re
 python3 -m unittest discover -s generator
 ```
 
-`generator/test_generate.py` uses a synthetic `BEHAVIOR.md` in a temp dir for isolation. One policy check allows librarian non-artifact tools to use `mbrain.*` or `linear.*`: the GB-02 profile includes `linear.list_issues` and `linear.get_issue` for backlog tending (see `bots/librarian/INSTRUCTIONS.md`), while cross-cutting “brain via mbrain” behavior still lives in `contracts/BEHAVIOR.md`.
+`generator/test_generate.py` uses a synthetic `BEHAVIOR.md` in a temp dir for isolation. Librarian non-artifact tools are validated as `brain_*` or `linear.*` (profile lists explicit `brain_*` names plus `linear.list_issues` / `linear.get_issue` for backlog tending). `bots/validate.py` also checks each role's `INSTRUCTIONS.md` backtick tool names against the role allowlist and rendered `dist/<role>/config.yaml`.
+
+`generate.py` deletes and recreates `dist/` on each run but **restores** hand-authored files listed in `PRESERVED_DIST_REL_PATHS` (today: `scout/config.yaml`). A plain `python3 generator/generate.py` run therefore keeps Scout's committed `config.yaml`; `generate.py --check` treats that file as preserved when diffing.
 
 ## `dist/` layout
 

@@ -108,7 +108,9 @@ def load_profiles() -> tuple[dict[str, dict], list[bool]]:
     profiles: dict[str, dict] = {}
 
     bot_dirs = sorted(
-        p for p in BOTS_DIR.iterdir() if p.is_dir() and p.name in EXPECTED_BOTS
+        p
+        for p in BOTS_DIR.iterdir()
+        if p.is_dir() and not p.name.startswith(("_", "."))
     )
     found_names = {p.name for p in bot_dirs}
 
@@ -790,6 +792,27 @@ def _instruction_looks_like_tool(name: str) -> bool:
     return name.startswith(INSTRUCTION_TOOL_PREFIXES)
 
 
+def collect_instruction_tool_violations(
+    role: str,
+    profile: dict,
+    instructions_text: str,
+    role_data: dict,
+    dist_dir: Path,
+) -> tuple[list[str], list[str]]:
+    allowed = _allowed_instruction_tools(role, profile, role_data, dist_dir)
+    stale: list[str] = []
+    unknown: list[str] = []
+    for match in BACKTICK_TOKEN.finditer(instructions_text):
+        name = match.group(1)
+        if not _instruction_looks_like_tool(name):
+            continue
+        if name.startswith("mbrain."):
+            stale.append(name)
+        elif name not in allowed:
+            unknown.append(name)
+    return stale, unknown
+
+
 def check_instruction_tool_references(
     profiles: dict[str, dict],
     data_dir: Path = DATA_DIR,
@@ -803,18 +826,10 @@ def check_instruction_tool_references(
         if prof is None:
             results.append(check(f"{bot}: instruction tool refs", False, "no profile"))
             continue
-        allowed = _allowed_instruction_tools(bot, prof, role_data, dist_dir)
         text = (BOTS_DIR / bot / "INSTRUCTIONS.md").read_text(encoding="utf-8")
-        stale: list[str] = []
-        unknown: list[str] = []
-        for match in BACKTICK_TOKEN.finditer(text):
-            name = match.group(1)
-            if not _instruction_looks_like_tool(name):
-                continue
-            if name.startswith("mbrain."):
-                stale.append(name)
-            elif name not in allowed:
-                unknown.append(name)
+        stale, unknown = collect_instruction_tool_violations(
+            bot, prof, text, role_data, dist_dir
+        )
         detail = []
         if stale:
             detail.append(f"stale: {sorted(set(stale))}")
@@ -828,6 +843,52 @@ def check_instruction_tool_references(
             )
         )
     return results
+
+
+PLANNER_DECISION_LOOKUP_MARKERS = (
+    "**Decision lookup.**",
+    "`brain_search`",
+    "`brain_get`",
+    "state that no rule exists when",
+)
+
+
+def check_planner_decision_lookup(
+    instructions_text: str | None = None,
+) -> list[bool]:
+    """Planner mail handling must require brain_search/brain_get before gap Questions."""
+    text = instructions_text
+    if text is None:
+        text = (BOTS_DIR / "planner" / "INSTRUCTIONS.md").read_text(encoding="utf-8")
+    missing = [m for m in PLANNER_DECISION_LOOKUP_MARKERS if m not in text]
+    return [
+        check(
+            "planner: decision lookup instructions present",
+            not missing,
+            "; ".join(missing),
+        )
+    ]
+
+
+def check_planner_decision_lookup_in_dist(dist_dir: Path = DIST_DIR) -> list[bool]:
+    path = dist_dir / "planner" / "system-prompt.md"
+    if not path.is_file():
+        return [
+            check(
+                "planner: decision lookup in rendered system-prompt",
+                False,
+                str(path),
+            )
+        ]
+    text = path.read_text(encoding="utf-8")
+    missing = [m for m in PLANNER_DECISION_LOOKUP_MARKERS if m not in text]
+    return [
+        check(
+            "planner: decision lookup in rendered system-prompt",
+            not missing,
+            "; ".join(missing),
+        )
+    ]
 
 
 def check_all_config_includes_undotted(dist_dir: Path = DIST_DIR) -> list[bool]:
@@ -854,6 +915,8 @@ def main() -> int:
         results.extend(check_write_tools(profiles))
         results.extend(check_writer_only_external_writes(profiles))
         results.extend(check_instruction_tool_references(profiles))
+        results.extend(check_planner_decision_lookup())
+    results.extend(check_planner_decision_lookup_in_dist())
     results.extend(check_role_configs())
     results.extend(check_gate_scripts())
     results.extend(check_all_config_includes_undotted())

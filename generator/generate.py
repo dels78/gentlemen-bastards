@@ -298,6 +298,7 @@ def generate(
     except ValueError:
         behavior_rel = behavior_label or behavior_path.name
 
+    preserved = _snapshot_preserved_files(out_dir) if out_dir.is_dir() else {}
     if out_dir.exists():
         shutil.rmtree(out_dir)
     out_dir.mkdir(parents=True)
@@ -384,9 +385,28 @@ def generate(
     }
     write_json(out_dir / "manifest.json", manifest)
 
+    _restore_preserved_files(out_dir, preserved)
+
 
 # Hand-maintained under dist/ until Scout adopts the 728-F generator (728-D).
-CHECK_PRESERVE_ONLY_IN_OUT = frozenset({"scout/config.yaml"})
+PRESERVED_DIST_REL_PATHS = frozenset({"scout/config.yaml"})
+CHECK_PRESERVE_ONLY_IN_OUT = PRESERVED_DIST_REL_PATHS
+
+
+def _snapshot_preserved_files(out_dir: Path) -> dict[str, bytes]:
+    snapshots: dict[str, bytes] = {}
+    for rel in PRESERVED_DIST_REL_PATHS:
+        path = out_dir / rel
+        if path.is_file():
+            snapshots[rel] = path.read_bytes()
+    return snapshots
+
+
+def _restore_preserved_files(out_dir: Path, snapshots: dict[str, bytes]) -> None:
+    for rel, data in snapshots.items():
+        path = out_dir / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
 
 
 def tree_diff(a: Path, b: Path) -> list[str]:

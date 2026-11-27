@@ -315,6 +315,20 @@ class GenerateTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn("wakeAgent", result.stdout)
 
+    def test_generate_preserves_hand_authored_scout_config(self) -> None:
+        scout_cfg = REPO_ROOT / "dist" / "scout" / "config.yaml"
+        if not scout_cfg.is_file():
+            self.skipTest("committed scout/config.yaml missing")
+        original = scout_cfg.read_bytes()
+        out = self.out_dir
+        out.mkdir(parents=True, exist_ok=True)
+        scout_dir = out / "scout"
+        scout_dir.mkdir(parents=True, exist_ok=True)
+        (scout_dir / "config.yaml").write_bytes(original)
+        run_generate(BOTS_DIR, self.behavior_path, out)
+        self.assertTrue((scout_dir / "config.yaml").is_file())
+        self.assertEqual((scout_dir / "config.yaml").read_bytes(), original)
+
     def test_renders_match_committed_dist(self) -> None:
         # Full --check is blocked by pre-existing system-prompt/manifest drift
         # from PR #16; pin the files this generator change owns byte-for-byte.
