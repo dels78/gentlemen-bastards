@@ -6,6 +6,11 @@ do not edit the rendered copy under dist/.
 
 Prints one JSON object on stdout: loop status for the personal triage swarm.
 Reuses gate.py's MCP client from the same scripts/ directory on the profile.
+
+MCP contract (personal-mcp; mirrors bot INSTRUCTIONS.md list calls):
+- artifacts_list applies `type` and `unprocessed_for` before `limit`.
+- runs_list accepts `role` and returns `runs[]` with `role` and `finished_at`.
+  Herald's token includes `runs_list` and cross-role artifact reads for health.
 """
 
 from __future__ import annotations
@@ -59,8 +64,7 @@ def latest_coordinator_finished_at(runs: list) -> datetime | None:
     for run in runs:
         if not isinstance(run, dict):
             continue
-        role = run.get("role")
-        if role is not None and role != COORDINATOR:
+        if run.get("role") != COORDINATOR:
             continue
         for key in ("finished_at", "ended_at", "completed_at"):
             raw = run.get(key)

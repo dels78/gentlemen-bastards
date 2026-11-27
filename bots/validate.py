@@ -683,9 +683,8 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
             bad.append("token var / wakeAgent output missing")
         if "personal-mcp.personal-mcp.svc.cluster.local" not in text:
             bad.append("in-cluster personal-mcp URL missing")
-        if '"type": kind' not in text and '"type": kind,' not in text:
-            if 'artifacts_list", {"type":' not in text:
-                bad.append("per-type artifacts_list wake queries missing")
+        if '"type": kind' not in text:
+            bad.append("per-type artifacts_list wake queries missing")
         results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
     loop_health = dist_dir / "herald" / "scripts" / "loop_health.py"
     lh_bad: list[str] = []

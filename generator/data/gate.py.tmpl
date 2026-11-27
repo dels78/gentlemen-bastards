@@ -16,9 +16,10 @@ role = the home directory's name. The role's bearer token is read from
 WAKE_KINDS, one `artifacts_list(type=<kind>, unprocessed_for=<role>,
 limit=1)` call is made to the in-cluster personal-mcp server (initialize
 handshake first, mirroring the proven 728-H bridge clients in
-custom.personal-mcp*). The server applies `unprocessed_for` and `type`
-before the limit, so unrelated older artifacts cannot hide work the role
-actually handles. Wake iff any per-type query returns at least one item.
+custom.personal-mcp*). Per bot INSTRUCTIONS, personal-mcp applies
+`unprocessed_for` and `type` before `limit`, so unrelated older artifacts
+cannot hide work the role actually handles. Wake iff any per-type query
+returns at least one item.
 """
 
 from __future__ import annotations
