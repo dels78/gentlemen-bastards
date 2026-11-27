@@ -25,8 +25,10 @@ From `dels78/personal-mcp` → `src/auth/tool_scopes.json`, subject `herald` has
 
 ```text
 artifacts_list(type="question", unprocessed_for="coordinator", limit=500)
-runs_list(role="coordinator", limit=100)
+runs_list(role="coordinator", limit=500, since=<oldest_question_created_at − 2h>)
 ```
+
+`runs_list` in personal-mcp sorts by `started_at` ascending and returns the oldest *N* rows (`list_runs` in `src/tools/artifacts.py`). Without `since`, a `limit` of 100 only sees ancient Coordinator runs. `loop_health.py` passes `since` from the oldest waiting Question (minus two hours) so recent finishes stay in the window.
 
 Payload shapes match `ArtifactStore.list_artifacts` / `list_runs` in personal-mcp `src/tools/artifacts.py` (see `generator/fixtures/personal_mcp_perso816_payloads.json` and `generator/test_personal_mcp_payload_contract.py`).
 

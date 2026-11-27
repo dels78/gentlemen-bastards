@@ -18,13 +18,19 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from gate import GateError, McpClient, extract_items, load_token
 
 COORDINATOR = "coordinator"
 STALE_MINUTES = 60
+RUNS_LIST_LIMIT = 500
+# personal-mcp list_runs filters on started_at >= since (src/tools/artifacts.py).
+RUNS_SINCE_MARGIN = timedelta(hours=2)
+SUCCESS_RUN_STATUSES = frozenset(
+    {"completed", "finished", "success", "succeeded", "ok", "done"}
+)
 
 
 def parse_instant(value: str) -> datetime:
@@ -68,13 +74,10 @@ def latest_coordinator_finished_at(runs: list) -> datetime | None:
         if run.get("role") != COORDINATOR:
             continue
         status = run.get("status")
-        if isinstance(status, str) and status.lower() in (
-            "failed",
-            "error",
-            "cancelled",
-            "crashed",
-        ):
-            continue
+        if isinstance(status, str):
+            normalized = status.lower()
+            if normalized not in SUCCESS_RUN_STATUSES:
+                continue
         for key in ("finished_at", "ended_at", "completed_at"):
             raw = run.get(key)
             if not isinstance(raw, str) or not raw.strip():
@@ -126,6 +129,20 @@ def coordinator_stale(
     return (now - last_finished).total_seconds() > STALE_MINUTES * 60
 
 
+def format_instant_z(when: datetime) -> str:
+    """ISO-8601 instant with Z suffix for personal-mcp since/until args."""
+    utc = when.astimezone(timezone.utc)
+    return utc.replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def runs_list_arguments(oldest_question_at: datetime | None) -> dict:
+    """Build runs_list args; use since so oldest-first limit does not drop recent runs."""
+    args: dict = {"role": COORDINATOR, "limit": RUNS_LIST_LIMIT}
+    if oldest_question_at is not None:
+        args["since"] = format_instant_z(oldest_question_at - RUNS_SINCE_MARGIN)
+    return args
+
+
 def main() -> int:
     home = Path(__file__).resolve().parent.parent
     role = home.name
@@ -146,12 +163,12 @@ def main() -> int:
         )
     )
     question_count = len(questions)
+    oldest_q = oldest_question_created_at(questions)
 
     runs = extract_runs(
-        client.call_tool("runs_list", {"role": COORDINATOR, "limit": 100})
+        client.call_tool("runs_list", runs_list_arguments(oldest_q))
     )
     last_finished = latest_coordinator_finished_at(runs)
-    oldest_q = oldest_question_created_at(questions)
     now = datetime.now(timezone.utc)
     stale = coordinator_stale(question_count, last_finished, oldest_q, now)
     status = "degraded" if stale else "ok"

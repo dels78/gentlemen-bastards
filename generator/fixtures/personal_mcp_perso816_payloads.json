@@ -3,7 +3,7 @@
   "source_path": "src/tools/artifacts.py",
   "source_functions": ["ArtifactStore.list_artifacts", "ArtifactStore.list_runs"],
   "source_blob_sha": "888e1b1bd0acd3040725592bbeb4556c8f758696",
-  "notes": "Index-list rows are summaries from index.jsonl (id, type, created_at, producer, processed_by). Runs are consolidated ledger rows (role, status, started_at, finished_at). Filters apply before limit (artifact_type, unprocessed_for, then results[:limit]).",
+  "notes": "Index-list rows are summaries from index.jsonl. list_artifacts: filter, then results[:limit] oldest-first. list_runs: filter role/since on started_at, sort started_at ascending, then results[:limit] — see test_perso_816.personal_mcp_list_runs and loop_health runs_list_since test.",
   "artifacts_list_response": {
     "artifacts": [
       {

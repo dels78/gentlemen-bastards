@@ -57,6 +57,34 @@ class FixedDateTime(datetime):
         return cls.fixed
 
 
+def personal_mcp_list_runs(
+    all_runs: list[dict],
+    *,
+    role: str | None = None,
+    since: str | None = None,
+    limit: int = 50,
+) -> list[dict]:
+    """Mirror personal-mcp ArtifactStore.list_runs (src/tools/artifacts.py)."""
+
+    def parse_iso(value: str) -> datetime:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+    since_dt = parse_iso(since) if since else None
+    results: list[dict] = []
+    for run in all_runs:
+        if run.get("started_at") is None:
+            continue
+        if role and run.get("role") != role:
+            continue
+        started = parse_iso(str(run["started_at"]))
+        if since_dt and started < since_dt:
+            continue
+        results.append(run)
+    results.sort(key=lambda r: str(r["started_at"]))
+    limit = max(1, min(int(limit), 500))
+    return results[:limit]
+
+
 def run_loop_health(handler) -> dict:
     health = LoopHealthScriptTest.health
     with (
@@ -493,6 +521,62 @@ class LoopHealthScriptTest(unittest.TestCase):
 
         self.assertEqual(run_loop_health(handler)["status"], "degraded")
 
+    def test_runs_list_since_beats_oldest_first_limit_window(self) -> None:
+        """personal-mcp returns oldest N by started_at; since must pull in recent finishes."""
+        FixedDateTime.fixed = datetime(2026, 11, 27, 20, 0, tzinfo=timezone.utc)
+        question_created = "2026-11-27T18:59:00Z"
+        all_runs: list[dict] = []
+        for i in range(150):
+            all_runs.append(
+                {
+                    "role": "coordinator",
+                    "status": "completed",
+                    "started_at": f"2026-10-01T12:{i % 60:02d}:00Z",
+                    "finished_at": f"2026-10-01T13:{i % 60:02d}:00Z",
+                }
+            )
+        all_runs.append(
+            {
+                "role": "coordinator",
+                "status": "completed",
+                "started_at": "2026-11-27T18:50:00Z",
+                "finished_at": "2026-11-27T19:30:00Z",
+            }
+        )
+        captured_runs_args: list[dict] = []
+
+        def handler(name: str, arguments: dict) -> dict:
+            if name == "artifacts_list":
+                return {
+                    "structuredContent": {
+                        "artifacts": [
+                            {"type": "question", "id": "q1", "created_at": question_created},
+                        ],
+                    }
+                }
+            if name == "runs_list":
+                captured_runs_args.append(dict(arguments))
+                subset = personal_mcp_list_runs(
+                    all_runs,
+                    role=arguments.get("role"),
+                    since=arguments.get("since"),
+                    limit=arguments.get("limit", 50),
+                )
+                return {"structuredContent": {"runs": subset}}
+            raise AssertionError(name)
+
+        body = run_loop_health(handler)
+        self.assertEqual(body["status"], "ok")
+        self.assertEqual(len(captured_runs_args), 1)
+        self.assertEqual(captured_runs_args[0]["limit"], 500)
+        self.assertIn("since", captured_runs_args[0])
+        naively_truncated = personal_mcp_list_runs(all_runs, role="coordinator", limit=100)
+        self.assertLess(
+            max(r["finished_at"] for r in naively_truncated),
+            "2026-11-27T19:00:00Z",
+            "oldest-first limit=100 must not include the recent finish",
+        )
+
 
 class HeraldLoopHealthProfileTest(unittest.TestCase):
     @classmethod
@@ -545,13 +629,16 @@ class HeraldLoopHealthProfileTest(unittest.TestCase):
 
         self.assertEqual(len(client_holder), 1)
         client = client_holder[0]
+        artifacts_call = client.calls[0]
+        runs_call = client.calls[1]
         self.assertEqual(
-            client.calls,
-            [
-                ("artifacts_list", {"type": "question", "unprocessed_for": "coordinator", "limit": 500}),
-                ("runs_list", {"role": "coordinator", "limit": 100}),
-            ],
+            artifacts_call,
+            ("artifacts_list", {"type": "question", "unprocessed_for": "coordinator", "limit": 500}),
         )
+        self.assertEqual(runs_call[0], "runs_list")
+        self.assertEqual(runs_call[1]["role"], "coordinator")
+        self.assertEqual(runs_call[1]["limit"], 500)
+        self.assertNotIn("since", runs_call[1])
         self.assertEqual(gate.PERSONAL_MCP_URL, "http://personal-mcp.personal-mcp.svc.cluster.local:80/mcp")
 
 
