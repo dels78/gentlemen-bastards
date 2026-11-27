@@ -100,6 +100,10 @@ Writer's `tools.json` gains a `portal` block (`include`, `read_back_only`, `writ
 
 Writer's personal-mcp include is the explicit 8-name gmail list, not `group:gmail`: `gmail_send` and `gmail_delete` are SHADOW-withheld server-side for `sub=writer` (728-D D5 step 3), and the include must stay within the server-side scope. Restoring them is a paired change (role-configs.json + personal-mcp `tool_scopes.json` together).
 
+## GB-21 (PERSO-816): per-type gate wake and Herald loop health
+
+Spec id **GB-21** tracks PERSO-816 in Linear. It extends **728-EF D10** wake gates: each gate queries `artifacts_list` per wake kind so unrelated unprocessed artifacts cannot starve the Coordinator (or any gated role). Herald adds `loop_health.py` to flag a stale Coordinator when Questions wait.
+
 ## Gate scripts (`scripts/gate.py`; 728-D plan D3, 728-EF D10)
 
 For every role with `gate_wake_kinds` in `role-configs.json` the generator renders `dist/<role>/scripts/gate.py` from the shared template `generator/data/gate.py.tmpl` — one shared logic, per-role wake-kind constants. The fetch hook lays `dist/<role>/scripts/*` into `<profile home>/scripts/`, where Hermes' cron scheduler runs it as a pre-run gate: the last stdout line `{"wakeAgent": false}` skips the model run; any failure wakes (safe direction), so the script exits non-zero with no `wakeAgent` line on any error. The script derives its role from its home directory name, reads `MCP_SERVICE_TOKEN_<ROLE>` from `<home>/.env`, and for each wake kind makes `artifacts_list(type=<kind>, unprocessed_for=<role>, limit=1)` against the in-cluster personal-mcp server so unrelated unprocessed artifacts cannot starve the gate. Wake kinds per role live in `role-configs.json`; `bots/validate.py` checks each rendered gate carries exactly its kinds.
