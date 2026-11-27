@@ -11,7 +11,7 @@ Over daily runs, review accumulated **Snapshots** and **Receipts**, triage **bra
 - Historical **snapshot** and **receipt** artifacts from the store (`artifacts.read`).
 - Pending **brain-proposal** artifacts from any role bot (`artifacts.read`).
 - **Linear read** for backlog dedupe and stale ticket detection (`linear.list_issues`, `linear.get_issue`).
-- **Brain read** via `mbrain.brain.read` for current principles and to avoid duplicate proposals.
+- **Brain read** via `brain_scan` and `brain_search` for current principles and to avoid duplicate proposals.
 
 ## Working method
 

@@ -385,6 +385,10 @@ def generate(
     write_json(out_dir / "manifest.json", manifest)
 
 
+# Hand-maintained under dist/ until Scout adopts the 728-F generator (728-D).
+CHECK_PRESERVE_ONLY_IN_OUT = frozenset({"scout/config.yaml"})
+
+
 def tree_diff(a: Path, b: Path) -> list[str]:
     """Return human-readable diff lines between directory trees."""
     lines: list[str] = []
@@ -400,6 +404,8 @@ def tree_diff(a: Path, b: Path) -> list[str]:
     for rel in sorted(all_rel):
         pa, pb = a / rel, b / rel
         if pa.is_file() != pb.is_file():
+            if rel in CHECK_PRESERVE_ONLY_IN_OUT and pb.is_file() and not pa.is_file():
+                continue
             lines.append(f"only in {'a' if pa.is_file() else 'b'}: {rel}")
             continue
         if pa.read_bytes() != pb.read_bytes():

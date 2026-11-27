@@ -5,7 +5,11 @@
   "produces": ["question"],
   "tools": {
     "allow": [
-      "mbrain.brain.read",
+      "brain_status",
+      "brain_scan",
+      "brain_get",
+      "brain_search",
+      "brain_traverse",
       "artifacts.read",
       "artifacts.write",
       "linear.list_issues",

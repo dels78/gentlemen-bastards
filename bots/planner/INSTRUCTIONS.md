@@ -9,13 +9,13 @@ Read each unprocessed **Snapshot** and relevant brain principles, produce an ord
 ## Inputs
 
 - **Snapshot** (`consumes`): load by event trigger or artifact ref; validate envelope and `refs`.
-- **Brain principles and rules**: query via `mbrain.brain.read` using dotai's access pattern; load once per run, then query on demand for specific rulings.
+- **Brain principles and decisions**: `brain_status`, `brain_scan`, `brain_search`, and `brain_get` — load fresh every run; cache scan results for the run only.
 
 ## Working method
 
 1. **Select Snapshots** — `artifacts_list(type="snapshot", unprocessed_for="planner", limit=500)`. Sort the returned snapshots client-side by `created_at` ascending (oldest first); do not rely on the server's order. For each snapshot: look for an existing Plan with `artifacts_list(type="plan", since=<snapshot created_at>, limit=500)` filtered client-side on `refs.snapshot_id`. If one exists, `artifacts_mark_processed(<snapshot id>)` and write nothing for it. Otherwise plan it (steps 2–8 for that snapshot).
-2. **Load Snapshot** — `artifacts.read` by id; abort the run with a logged error if envelope or schema checks fail.
-3. **Load principles and rules** — fetch the minimal principle set for triage and the current standing rules governing email disposition, via `mbrain.brain.read`; fetch fresh every run, cache for this run only, and never rely on remembered principle or rule content. Call `brain_status` once this run. The current brain head is the returned `head_sha`. Every Plan this run records that value as `payload.brain_head` and as `refs.brain_head`.
+2. **Load Snapshot** — `artifacts_read` by id; abort the run with a logged error if envelope or schema checks fail.
+3. **Load principles** — call `brain_status` once this run; the current brain head is the returned `head_sha`. Call `brain_scan` once for the compiled principle set and index-triggered rules; cache the result for this run only and never rely on remembered content. Every Plan this run records `head_sha` as `payload.brain_head` and `refs.brain_head`. Per-item disposition decisions are loaded in **Mail handling** via `brain_search` and `brain_get`, not from `brain_scan` alone.
 4. **Deterministic pass** — run the personal-triage planning engine (`engine.plan`) over Snapshot items; each item becomes a Plan row: action, target, rationale, dependency order.
 5. **Judgment points** — invoke the model only where the engine marks `needs_judgment`; cap calls to budget. For email items, follow **Mail handling** below.
 6. **Questions** — for unresolved items, emit **question** artifacts with `refs.artifact_id` and `refs.item_ref` pointing at the Snapshot line.
@@ -29,9 +29,24 @@ Disposition rules for email live in the brain, not in these
 instructions. This section states only the procedure for applying
 them; it contains no rule of its own.
 
-Fetch the current standing rules governing email disposition via
-`mbrain.brain.read` before judging any email item in a run
-(step 2). Judge only against the rule text fetched in this run.
+Standing disposition rules come from `brain_scan` (cached this run)
+and from per-item `brain_search` / `brain_get` (see **Decision
+lookup**). Judge only against rule text fetched in this run.
+
+**Decision lookup.** `brain_scan` loads compiled CORE and
+index-triggered principles only; standing **decisions** for
+specific senders or subjects may not appear there. Before judging an
+email item — and before any Question that claims no brain rule
+exists — search for decisions: call `brain_search` with tokens from
+the sender display name, the domain part of the From address, and
+meaningful words from the subject (drop generic tokens such as
+`re`, `fwd`, and `notification` only when they carry no
+discriminating value). For each hit that looks like a disposition
+rule or decision, call `brain_get` and read the full record. Treat
+an applicable decision as **fetched rule** text for the bullets
+below. If `brain_search` finds a decision that does not fully cover
+this item, cite its id in any Question and explain the gap — never
+state that no rule exists when a matching decision was returned.
 
 **Same-head skip.** Once per run, before judging mail, build the decided set. `artifacts_list(type="plan", limit=500)` returns index entries oldest-first, capped at 500, and each entry includes `refs` but not `payload`. When a page's count is 500, list again with `since` set to the last entry's `created_at` (`since` is inclusive, so skip ids already collected) until a page adds nothing new. A Plan counts when `refs.brain_head` equals this run's `head_sha`. When `refs.brain_head` is absent, `artifacts_read` that Plan and use `payload.brain_head` and `payload.decided`. A decided entry whose `recheck_after` is at or before this run's start does not count: what the item waited on may have changed, so judge it again. For an email item whose message id or thread id appears on a counted entry of a counted Plan (`refs.decided` or `payload.decided`, matched on `message_id`, `thread_id`, or a `gmail:` ref), skip it: no action, no write, no Question, and do not append it to this Plan's `decided`. A `keep` already recorded under this head stays decided, and it does not spawn another Question. When the head changes, the item is eligible again.
 
@@ -70,12 +85,15 @@ For each email item the engine marks `needs_judgment` that the same-head skip di
   `"keep"` action: set the item's `action` to `"keep"`; add
   no write. When the protection holds only until something
   changes, record when to look again (`recheck_after`, below).
-- If no fetched rule covers the item: set the item's `action`
-  to `"keep"`; add no write; and emit a **Question** for the
-  item (step 5, with `refs.artifact_id` and `refs.item_ref`
-  pointing at the Snapshot line) naming the gap — the sender,
-  the subject, and what kind of mail it appears to be. An
-  uncovered item is reported, never silently absorbed.
+- If no fetched rule covers the item after **Decision lookup**
+  (`brain_search` / `brain_get` on each relevant hit): set the
+  item's `action` to `"keep"`; add no write; and emit a
+  **Question** for the item (step 6, with `refs.artifact_id` and
+  `refs.item_ref` pointing at the Snapshot line) naming the gap —
+  the sender, the subject, what kind of mail it appears to be, and
+  the decision ids you considered if any. An uncovered item is
+  reported, never silently absorbed. Never claim no brain rule exists
+  when `brain_search` returned a matching decision.
 - If fetched rules conflict, or coverage is genuinely unclear:
   set the item's `action` to `"keep"`; add no write. If the
   item needs Martin, emit a **Question** for it.

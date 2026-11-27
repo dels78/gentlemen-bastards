@@ -3,6 +3,10 @@
     "artifacts.read",
     "artifacts.write",
     "engine.plan",
-    "mbrain.brain.read"
+    "brain_status",
+    "brain_scan",
+    "brain_get",
+    "brain_search",
+    "brain_traverse"
   ]
 }

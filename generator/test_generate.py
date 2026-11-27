@@ -172,14 +172,14 @@ class GenerateTest(unittest.TestCase):
         non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
         self.assertEqual(non_artifacts, [])
 
-    def test_librarian_non_artifacts_allow_mbrain_prefix(self) -> None:
+    def test_librarian_non_artifacts_allow_brain_or_linear(self) -> None:
         run_generate(BOTS_DIR, self.behavior_path, self.out_dir)
         tools = json.loads((self.out_dir / "librarian" / "tools.json").read_text())
         non_artifacts = [t for t in tools["allow"] if not t.startswith("artifacts.")]
         # GB-02 librarian includes linear read tools for backlog dedupe (see INSTRUCTIONS).
         for entry in non_artifacts:
             self.assertTrue(
-                entry.startswith("mbrain.") or entry.startswith("linear."),
+                entry.startswith("brain_") or entry.startswith("linear."),
                 entry,
             )
 

@@ -33,6 +33,55 @@ SCHEDULE_KINDS = frozenset({"interval", "cron", "event", "manual"})
 
 WRITE_MARKERS = (".apply", ".send", ".create", ".update")
 
+BACKTICK_TOKEN = re.compile(r"`([a-z][a-z0-9_.]*)`")
+
+# Backtick tokens that look like tools but are schema fields, roles, or prose.
+INSTRUCTION_NON_TOOLS = frozenset(
+    {
+        "act",
+        "answer",
+        "archive",
+        "brain_head",
+        "coordinator",
+        "created_at",
+        "cursor",
+        "description",
+        "excerpt",
+        "failed",
+        "fwd",
+        "gmail",
+        "head_sha",
+        "keep",
+        "label",
+        "limit",
+        "notification",
+        "outcome",
+        "re",
+        "recheck_after",
+        "refs",
+        "responder",
+        "run_id",
+        "since",
+        "unprocessed_for",
+    }
+)
+
+INSTRUCTION_TOOL_PREFIXES = (
+    "artifacts_",
+    "artifacts.",
+    "runs_",
+    "brain_",
+    "gmail_",
+    "gmail.",
+    "calendar_",
+    "linear_",
+    "linear.",
+    "schedule.",
+    "engine_",
+    "engine.",
+    "mbrain.",
+)
+
 REQUIRED_TOP_LEVEL = {
     "role": str,
     "purpose": str,
@@ -58,7 +107,9 @@ def load_profiles() -> tuple[dict[str, dict], list[bool]]:
     results: list[bool] = []
     profiles: dict[str, dict] = {}
 
-    bot_dirs = sorted(p for p in BOTS_DIR.iterdir() if p.is_dir())
+    bot_dirs = sorted(
+        p for p in BOTS_DIR.iterdir() if p.is_dir() and p.name in EXPECTED_BOTS
+    )
     found_names = {p.name for p in bot_dirs}
 
     results.append(
@@ -687,6 +738,98 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
     return results
 
 
+def expand_personal_mcp(allow: list[str], groups: dict[str, list[str]]) -> list[str]:
+    """Expand group: refs the same way personal-mcp tool_scopes.json does."""
+    out: list[str] = []
+    for entry in allow:
+        names = groups[entry[len("group:") :]] if entry.startswith("group:") else [entry]
+        for name in names:
+            if name not in out:
+                out.append(name)
+    return out
+
+
+def _config_includes(config: dict) -> set[str]:
+    names: set[str] = set()
+    for srv in (config.get("mcp_servers") or {}).values():
+        for n in ((srv or {}).get("tools") or {}).get("include") or []:
+            names.add(str(n))
+    return names
+
+
+def _allowed_instruction_tools(
+    role: str,
+    profile: dict,
+    role_data: dict,
+    dist_dir: Path,
+) -> set[str]:
+    allowed: set[str] = set(profile["tools"]["allow"])
+    for t in list(allowed):
+        if "." in t:
+            allowed.add(t.replace(".", "_"))
+    role_cfg = role_data.get("roles", {}).get(role)
+    if role_cfg and "personal_mcp_allow" in role_cfg:
+        allowed.update(
+            expand_personal_mcp(
+                role_cfg["personal_mcp_allow"],
+                role_data["personal_mcp"]["groups"],
+            )
+        )
+    cfg_path = dist_dir / role / "config.yaml"
+    if cfg_path.is_file():
+        try:
+            allowed.update(_config_includes(parse_config_yaml(cfg_path.read_text(encoding="utf-8"))))
+        except ValueError:
+            pass
+    return allowed
+
+
+def _instruction_looks_like_tool(name: str) -> bool:
+    if name in INSTRUCTION_NON_TOOLS:
+        return False
+    return name.startswith(INSTRUCTION_TOOL_PREFIXES)
+
+
+def check_instruction_tool_references(
+    profiles: dict[str, dict],
+    data_dir: Path = DATA_DIR,
+    dist_dir: Path = DIST_DIR,
+) -> list[bool]:
+    """INSTRUCTIONS.md backtick tool names must match the role's allowlist and rendered config."""
+    results: list[bool] = []
+    role_data = json.loads((data_dir / "role-configs.json").read_text(encoding="utf-8"))
+    for bot in sorted(EXPECTED_BOTS):
+        prof = profiles.get(bot)
+        if prof is None:
+            results.append(check(f"{bot}: instruction tool refs", False, "no profile"))
+            continue
+        allowed = _allowed_instruction_tools(bot, prof, role_data, dist_dir)
+        text = (BOTS_DIR / bot / "INSTRUCTIONS.md").read_text(encoding="utf-8")
+        stale: list[str] = []
+        unknown: list[str] = []
+        for match in BACKTICK_TOKEN.finditer(text):
+            name = match.group(1)
+            if not _instruction_looks_like_tool(name):
+                continue
+            if name.startswith("mbrain."):
+                stale.append(name)
+            elif name not in allowed:
+                unknown.append(name)
+        detail = []
+        if stale:
+            detail.append(f"stale: {sorted(set(stale))}")
+        if unknown:
+            detail.append(f"not in allowlist/config: {sorted(set(unknown))}")
+        results.append(
+            check(
+                f"{bot}: instruction tool refs allowed",
+                not stale and not unknown,
+                "; ".join(detail),
+            )
+        )
+    return results
+
+
 def check_all_config_includes_undotted(dist_dir: Path = DIST_DIR) -> list[bool]:
     """D8 check 2 across every dist/*/config.yaml (incl. hand-authored scout)."""
     bad: list[str] = []
@@ -710,6 +853,7 @@ def main() -> int:
         results.extend(check_consult_inbox_block(profiles))
         results.extend(check_write_tools(profiles))
         results.extend(check_writer_only_external_writes(profiles))
+        results.extend(check_instruction_tool_references(profiles))
     results.extend(check_role_configs())
     results.extend(check_gate_scripts())
     results.extend(check_all_config_includes_undotted())
