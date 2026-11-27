@@ -110,6 +110,15 @@ For every role with `gate_wake_kinds` in `role-configs.json` the generator rende
 
 Herald also gets `dist/herald/scripts/loop_health.py` from `generator/data/loop_health.py.tmpl` (PERSO-816): a deterministic JSON probe of Coordinator freshness versus unprocessed Questions. Herald instructions require folding a `degraded` result into the digest Report.
 
+Expected personal-mcp shapes (consumed from bot INSTRUCTIONS; verify against live payloads after deploy):
+
+```json
+{"artifacts": [{"type": "question", "created_at": "2026-11-27T18:00:00Z", "id": "..."}]}
+{"runs": [{"role": "coordinator", "status": "finished", "finished_at": "2026-11-27T19:05:00Z"}]}
+```
+
+Staleness: unprocessed Questions older than 60 minutes with no successful Coordinator `finished_at` at or after the oldest Question's `created_at`.
+
 `bots/validate.py` checks each rendered config: D2 shape and own-role `${VAR}` headers; **[D8-1]** portal includes ⊆ the committed read-back's enabled served names; **[D8-2]** no dotted contract names in any include (all `dist/*/config.yaml`); **[D8-3]** no inactive-phase (W1/W2/W3), unmapped, or absent-on-portal name in any include, prefixed or not; **[D8-4]** writer `read_back_only` present in `tools.json` and disjoint from `write_capable`; **[D8-5]** portal URL byte-equals the live endpoint.
 
 ## Writer `read_back_only`

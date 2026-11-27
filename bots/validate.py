@@ -685,8 +685,10 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
             bad.append("in-cluster personal-mcp URL missing")
         if '"type": kind' not in text:
             bad.append("per-type artifacts_list wake queries missing")
-        if '"unprocessed_for": role, "limit": 500}' in text.replace(" ", ""):
+        if '"unprocessed_for": role, "limit": 500}' in text:
             bad.append("unfiltered limit=500 wake query still present")
+        if '"limit": 1' not in text:
+            bad.append("per-type wake queries must use limit=1")
         results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
     herald_cfg = dist_dir / "herald" / "config.yaml"
     herald_runs: list[str] = []

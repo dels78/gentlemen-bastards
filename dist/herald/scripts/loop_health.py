@@ -66,6 +66,14 @@ def latest_coordinator_finished_at(runs: list) -> datetime | None:
             continue
         if run.get("role") != COORDINATOR:
             continue
+        status = run.get("status")
+        if isinstance(status, str) and status.lower() in (
+            "failed",
+            "error",
+            "cancelled",
+            "crashed",
+        ):
+            continue
         for key in ("finished_at", "ended_at", "completed_at"):
             raw = run.get(key)
             if not isinstance(raw, str) or not raw.strip():
@@ -103,14 +111,16 @@ def coordinator_stale(
     oldest_question_at: datetime | None,
     now: datetime,
 ) -> bool:
+    """Stale when unprocessed Questions aged past STALE_MINUTES with no finish since."""
     if question_count <= 0:
         return False
+    if oldest_question_at is not None:
+        if (now - oldest_question_at).total_seconds() <= STALE_MINUTES * 60:
+            return False
+        if last_finished is None:
+            return True
+        return last_finished < oldest_question_at
     if last_finished is None:
-        return True
-    if (
-        oldest_question_at is not None
-        and last_finished < oldest_question_at
-    ):
         return True
     return (now - last_finished).total_seconds() > STALE_MINUTES * 60
 

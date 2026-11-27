@@ -124,7 +124,8 @@ class LoopHealthScriptTest(unittest.TestCase):
                         "runs": [
                             {
                                 "role": "coordinator",
-                                "finished_at": "2026-11-27T18:00:00Z",
+                                "status": "finished",
+                                "finished_at": "2026-11-27T16:30:00Z",
                             }
                         ],
                     }
@@ -155,7 +156,13 @@ class LoopHealthScriptTest(unittest.TestCase):
             if name == "artifacts_list":
                 return {
                     "structuredContent": {
-                        "artifacts": [{"type": "question", "id": "q1"}],
+                        "artifacts": [
+                            {
+                                "type": "question",
+                                "id": "q1",
+                                "created_at": "2026-11-27T17:00:00Z",
+                            }
+                        ],
                     }
                 }
             if name == "runs_list":
@@ -230,6 +237,97 @@ class LoopHealthScriptTest(unittest.TestCase):
             self.assertEqual(self.health.main(), 0)
 
         self.assertEqual(json.loads(out.getvalue().strip())["status"], "ok")
+
+    def test_ok_fresh_question_after_idle_coordinator(self) -> None:
+        """1-minute-old Question must not flag stale after a long Coordinator idle."""
+        fixed_now = datetime(2026, 11, 27, 20, 0, tzinfo=timezone.utc)
+
+        def handler(name: str, arguments: dict) -> dict:
+            if name == "artifacts_list":
+                return {
+                    "structuredContent": {
+                        "artifacts": [
+                            {
+                                "type": "question",
+                                "id": "q1",
+                                "created_at": "2026-11-27T19:59:00Z",
+                            }
+                        ],
+                    }
+                }
+            if name == "runs_list":
+                return {
+                    "structuredContent": {
+                        "runs": [
+                            {
+                                "role": "coordinator",
+                                "status": "finished",
+                                "finished_at": "2026-11-27T15:00:00Z",
+                            }
+                        ],
+                    }
+                }
+            raise AssertionError(name)
+
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now
+
+        with (
+            patch.object(self.health, "McpClient", lambda token: FakeMcpClient(token, handler)),
+            patch.object(self.health, "load_token", return_value="token"),
+            patch.object(self.health, "datetime", FixedDateTime),
+            redirect_stdout(io.StringIO()) as out,
+        ):
+            self.assertEqual(self.health.main(), 0)
+
+        self.assertEqual(json.loads(out.getvalue().strip())["status"], "ok")
+
+    def test_ignores_failed_coordinator_run_for_freshness(self) -> None:
+        fixed_now = datetime(2026, 11, 27, 20, 0, tzinfo=timezone.utc)
+
+        def handler(name: str, arguments: dict) -> dict:
+            if name == "artifacts_list":
+                return {
+                    "structuredContent": {
+                        "artifacts": [
+                            {
+                                "type": "question",
+                                "id": "q1",
+                                "created_at": "2026-11-27T18:00:00Z",
+                            }
+                        ],
+                    }
+                }
+            if name == "runs_list":
+                return {
+                    "structuredContent": {
+                        "runs": [
+                            {
+                                "role": "coordinator",
+                                "status": "failed",
+                                "finished_at": "2026-11-27T19:55:00Z",
+                            }
+                        ],
+                    }
+                }
+            raise AssertionError(name)
+
+        class FixedDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return fixed_now
+
+        with (
+            patch.object(self.health, "McpClient", lambda token: FakeMcpClient(token, handler)),
+            patch.object(self.health, "load_token", return_value="token"),
+            patch.object(self.health, "datetime", FixedDateTime),
+            redirect_stdout(io.StringIO()) as out,
+        ):
+            self.assertEqual(self.health.main(), 0)
+
+        self.assertEqual(json.loads(out.getvalue().strip())["status"], "degraded")
 
 
 if __name__ == "__main__":
