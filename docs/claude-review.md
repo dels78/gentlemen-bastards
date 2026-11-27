@@ -32,7 +32,7 @@ Concurrency is grouped per PR number; a newer run cancels an in-progress review 
 
 This Action replaces the previous Muse subagent reviewer for `cursor/*` implementation PRs. The pipeline is:
 
-1. **Cursor agent** implements a spec (GB-xx) on a `cursor/` branch and opens a PR.
+1. **Cursor agent** implements a spec (**GB-xx** in-repo spec or **PERSO-&lt;number&gt;** Linear issue) on a `cursor/` branch and opens a PR.
 2. **Claude Review** (this workflow) verifies the PR against the spec’s stated acceptance criteria and repo artifacts.
 3. On **PASS**, the **implementing agent** squash-merges (per orchestrator instructions). This workflow does not merge.
 

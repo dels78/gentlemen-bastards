@@ -1,0 +1,42 @@
+{
+  "source_repo": "dels78/personal-mcp",
+  "source_path": "src/tools/artifacts.py",
+  "source_functions": ["ArtifactStore.list_artifacts", "ArtifactStore.list_runs"],
+  "source_blob_sha": "888e1b1bd0acd3040725592bbeb4556c8f758696",
+  "notes": "Index-list rows are summaries from index.jsonl. list_artifacts: filter, then results[:limit] oldest-first. list_runs: filter role/since on started_at, sort started_at ascending, then results[:limit] — see test_perso_816.personal_mcp_list_runs and loop_health runs_list_since test.",
+  "artifacts_list_response": {
+    "artifacts": [
+      {
+        "id": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+        "type": "question",
+        "producer": "writer",
+        "subject": "writer",
+        "created_at": "2026-11-27T18:00:00Z",
+        "run_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "refs": {"artifact_id": "deadbeef"},
+        "processed_by": []
+      }
+    ],
+    "count": 1
+  },
+  "runs_list_response": {
+    "runs": [
+      {
+        "run_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "subject": "coordinator",
+        "role": "coordinator",
+        "kind": "cron",
+        "started_at": "2026-11-27T17:55:00Z",
+        "finished_at": "2026-11-27T18:05:00Z",
+        "status": "completed",
+        "artifacts_in": [],
+        "artifacts_out": [],
+        "tokens_used": 1200,
+        "tool_calls": 4,
+        "cost_usd": null,
+        "duration_seconds": 600.0
+      }
+    ],
+    "count": 1
+  }
+}
