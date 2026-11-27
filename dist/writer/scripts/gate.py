@@ -12,13 +12,13 @@ So on ANY error this script exits non-zero and prints NO wakeAgent line.
 
 Logic: home = the parent of the scripts/ directory containing this file;
 role = the home directory's name. The role's bearer token is read from
-<home>/.env (`MCP_SERVICE_TOKEN_<ROLE>`). One unfiltered
-`artifacts_list(unprocessed_for=<role>, limit=500)` call is made to the
-in-cluster personal-mcp server (initialize handshake first, mirroring
-the proven 728-H bridge clients in custom.personal-mcp*), and the result
-is type-filtered client-side (the D10 fallback shape): wake iff any
-returned item's kind (`type` in the store's index entries) is in
-WAKE_KINDS below.
+<home>/.env (`MCP_SERVICE_TOKEN_<ROLE>`). For each wake kind in
+WAKE_KINDS, one `artifacts_list(type=<kind>, unprocessed_for=<role>,
+limit=1)` call is made to the in-cluster personal-mcp server (initialize
+handshake first, mirroring the proven 728-H bridge clients in
+custom.personal-mcp*). The server applies `unprocessed_for` and `type`
+before the limit, so unrelated older artifacts cannot hide work the role
+actually handles. Wake iff any per-type query returns at least one item.
 """
 
 from __future__ import annotations
@@ -214,14 +214,16 @@ def main() -> int:
     token = load_token(home, role)
     client = McpClient(token)
     client.initialize()
-    result = client.call_tool(
-        "artifacts_list", {"unprocessed_for": role, "limit": 500}
-    )
-    items = extract_items(result)
-    wake = any(
-        isinstance(item, dict) and (item.get("kind") or item.get("type")) in WAKE_KINDS
-        for item in items
-    )
+    wake = False
+    for kind in WAKE_KINDS:
+        result = client.call_tool(
+            "artifacts_list",
+            {"type": kind, "unprocessed_for": role, "limit": 1},
+        )
+        items = extract_items(result)
+        if items:
+            wake = True
+            break
     print(json.dumps({"wakeAgent": wake}))
     return 0
 

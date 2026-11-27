@@ -212,6 +212,14 @@ def render_gate_script(role_cfg: dict, data_dir: Path) -> str:
     return template.replace("__WAKE_KINDS__", kinds)
 
 
+def render_herald_loop_health(data_dir: Path) -> str:
+    """Render dist/herald/scripts/loop_health.py (PERSO-816)."""
+    path = data_dir / "loop_health.py.tmpl"
+    if not path.is_file():
+        raise SystemExit(f"missing Herald loop health template: {path}")
+    return path.read_text(encoding="utf-8")
+
+
 def render_config_yaml(
     role: str,
     role_cfg: dict,
@@ -356,6 +364,12 @@ def generate(
                     render_gate_script(role_cfg, data_dir), encoding="utf-8"
                 )
                 gate_path.chmod(0o755)
+                if role == "herald":
+                    health_path = scripts_out / "loop_health.py"
+                    health_path.write_text(
+                        render_herald_loop_health(data_dir), encoding="utf-8"
+                    )
+                    health_path.chmod(0o755)
 
         tools = tools_payload(profile, role, portal)
         write_json(role_out / "tools.json", tools)

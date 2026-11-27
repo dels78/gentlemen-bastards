@@ -683,7 +683,26 @@ def check_gate_scripts(data_dir: Path = DATA_DIR, dist_dir: Path = DIST_DIR) -> 
             bad.append("token var / wakeAgent output missing")
         if "personal-mcp.personal-mcp.svc.cluster.local" not in text:
             bad.append("in-cluster personal-mcp URL missing")
+        if '"type": kind' not in text and '"type": kind,' not in text:
+            if 'artifacts_list", {"type":' not in text:
+                bad.append("per-type artifacts_list wake queries missing")
         results.append(check(f"{role}: gate.py rendered with its wake kinds", not bad, "; ".join(bad)))
+    loop_health = dist_dir / "herald" / "scripts" / "loop_health.py"
+    lh_bad: list[str] = []
+    if not loop_health.is_file():
+        lh_bad.append(str(loop_health))
+    else:
+        lh_text = loop_health.read_text(encoding="utf-8")
+        try:
+            compile(lh_text, str(loop_health), "exec")
+        except SyntaxError as exc:
+            lh_bad.append(f"syntax: {exc}")
+        for needle in ("coordinator_stale", "runs_list", "unprocessed_questions_for_coordinator"):
+            if needle not in lh_text:
+                lh_bad.append(f"missing {needle!r}")
+    results.append(
+        check("herald: loop_health.py rendered", not lh_bad, "; ".join(lh_bad))
+    )
     return results
 
 

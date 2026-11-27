@@ -1,5 +1,5 @@
-<!-- behavior-source: contracts/BEHAVIOR.md sha256=9e6c802d28a65c5a2f8e2b249820381b8f335ab202c1b47afbd46fa3403fd271 -->
-<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=a272f9069bad1b26d0f168e02275baf850aeac934c2a664fd56b2f36bcf67e99 -->
+<!-- behavior-source: contracts/BEHAVIOR.md sha256=5a0247d4654cc256cd1d9501c6c479dca0220d2fa6ead3a9a478a79292f583d8 -->
+<!-- role-instructions-source: bots/herald/INSTRUCTIONS.md sha256=787d8f1f02e9012ea99d731b399af2bd99712b60106b4b337d71a8095b2625f3 -->
 # Loop bots — shared behavior contract
 
 Imperative rules for every role in the personal triage loop. Role-specific caps and tools live in gentlemen-bastards; this file binds all roles.
@@ -26,7 +26,7 @@ If something needs doing, ensure it exists as a task with a durable ID before yo
 
 Bots communicate **exclusively** through typed artifacts defined in the gentlemen-bastards protocol:
 
-`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`.
+`snapshot`, `plan`, `question`, `receipt`, `report`, `consult-request`, `consult-response`, `brain-proposal`, `decision`.
 
 No free-form bot-to-bot chat. No side channels.
 
@@ -38,7 +38,7 @@ No free-form bot-to-bot chat. No side channels.
 
 If lineage cannot be stated, do not emit the artifact; park as a `question` or `report` with evidence.
 
-**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain.
+**Brain proposals** are typed `brain-proposal` artifacts. Any bot may propose; **only the Librarian** develops proposals and routes them as **Questions** for human approval. Bots never apply proposals directly to the brain. The Librarian's only apply path is the gated PR-opening tool (`brain_apply_gated` in personal-mcp), invoked only after Martin's approval has been recorded as a `decision` artifact; it opens a pull request in mbrain and never commits directly to `main`.
 
 ## 4. Separation of duty
 
@@ -67,6 +67,8 @@ Log every consult. Enforce a **per-run consult budget**. On budget exhaustion, *
 **Human decisions** are never peer-consulted and never taken by a bot.
 
 Escalate: **coordinator → Muse → the human**.
+
+The human's answers come back down the same path and are recorded by the **Coordinator** as `decision` artifacts. **No bot may mint or alter that record**; in particular, the bot that will act on a decision never records it.
 
 Record the human’s answers deliberately in the **brain**, the **code**, or **these instructions**—not only in chat.
 
@@ -129,12 +131,13 @@ Turn **Receipts** and peer **Reports** into batched **Reports** for Martin's dig
 ## Working method
 
 1. **Define window** — use cron boundary (`0 7,19 * * *`); load all new Receipts and Reports in that window.
-2. **Deterministic aggregation** — group by domain (mail actions, Linear, system health); sort by urgency then time.
-3. **Urgency gate (deterministic)** — only items flagged `urgent` in source artifacts or matching dotai urgent rules may trigger realtime delivery.
-4. **Judgment point** — model may polish digest prose; must not invent facts not present in inputs.
-5. **Compose Report** — `payload.sections[]` per `protocol/schemas/report.schema.json`; include open Questions pointers by reference id only.
-6. **Batch publish** — write the digest **report** via artifacts store (delivery to Muse/UI is downstream of the artifact).
-7. **Urgent path** — for items passing the urgency gate, flag each in the Report's urgent section with a terse summary and its artifact ids; Muse delivers flagged items immediately (Herald holds no messaging surface in v1). Never spam per-event noise.
+2. **Loop health (deterministic)** — before composing the digest, run `scripts/loop_health.py` from this profile home (same pattern as the wake gate: read the JSON on stdout). If `status` is `degraded`, fold every `alerts[]` entry into the digest Report under a system-health section and set `payload.status: degraded` on the Report you write. Do not treat Hermes job success alone as a healthy loop: a green cron with `status: degraded` from `loop_health.py` still means the swarm is stuck (for example Coordinator idle while Questions wait). When `status` is `ok`, you may still cite `unprocessed_questions_for_coordinator` as a metric but do not downgrade the loop.
+3. **Deterministic aggregation** — group by domain (mail actions, Linear, system health); sort by urgency then time.
+4. **Urgency gate (deterministic)** — only items flagged `urgent` in source artifacts or matching dotai urgent rules may trigger realtime delivery.
+5. **Judgment point** — model may polish digest prose; must not invent facts not present in inputs.
+6. **Compose Report** — `payload.sections[]` per `protocol/schemas/report.schema.json`; include open Questions pointers by reference id only.
+7. **Batch publish** — write the digest **report** via artifacts store (delivery to Muse/UI is downstream of the artifact).
+8. **Urgent path** — for items passing the urgency gate, flag each in the Report's urgent section with a terse summary and its artifact ids; Muse delivers flagged items immediately (Herald holds no messaging surface in v1). Never spam per-event noise.
 
 ## Outputs
 
